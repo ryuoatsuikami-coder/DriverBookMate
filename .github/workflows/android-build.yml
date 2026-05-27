@@ -1,4 +1,4 @@
-name: Build DriverMate PH APK
+name: Build DriverMate PH AAB
 
 on:
   push:
@@ -32,13 +32,13 @@ jobs:
           unzip gradle-8.7-bin.zip
           ./gradle-8.7/bin/gradle -v
 
-      - name: Build debug APK
+      - name: Build release AAB
         run: |
           cd project
-          ../gradle-8.7/bin/gradle assembleDebug
+          ../gradle-8.7/bin/gradle bundleRelease
 
-      - name: Upload APK
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: DriverMatePH-debug-apk
-          path: project/app/build/outputs/apk/debug/*.apk
+          name: DriverMatePH-release-aab
+          path: project/app/build/outputs/bundle/release/*.aab
