@@ -65,6 +65,7 @@ class BookingNotificationListener : NotificationListenerService() {
         val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
         val voiceEnabled = prefs.getBoolean("voice_enabled", true)
         val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
+        val firstPriorityRoute = prefs.getString("first_priority_route", "") ?: ""
 
         val appPackage = sbn.packageName.lowercase()
 
@@ -113,9 +114,6 @@ class BookingNotificationListener : NotificationListenerService() {
 
         if (matchedRoute == null) return
 
-        val firstPreferredRoute = savedRoutes.firstOrNull()
-        val isFirstPreferred = firstPreferredRoute != null && route.equals(firstPreferredRoute.route, true)
-
         val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
         val cleanDistance = if (distance == "not detected") "not detected" else "$distance kilometers"
 
@@ -129,7 +127,10 @@ class BookingNotificationListener : NotificationListenerService() {
             openApp()
         }, 3500)
 
-        if (autoOpenWaze && isFirstPreferred && route != "Route not detected") {
+        val isManualFirstPriority =
+            firstPriorityRoute.isNotBlank() && route.equals(firstPriorityRoute, true)
+
+        if (autoOpenWaze && isManualFirstPriority && route != "Route not detected") {
             handler.postDelayed({
                 openWaze(route)
             }, 6000)
@@ -212,9 +213,57 @@ class BookingNotificationListener : NotificationListenerService() {
             "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
             "Dasmarinas", "General Trias", "Imus", "Indang", "Kawit",
             "Naic", "Noveleta", "Rosario", "Silang", "Tagaytay",
-            "Tanza", "Ternate", "Trece Martires", "Manila", "Pasay",
-            "Makati", "BGC", "Taguig", "Paranaque", "Las Pinas",
-            "Alabang", "Quezon City", "Pasig", "Muntinlupa"
+            "Tanza", "Ternate", "Trece Martires",
+
+            "General Manila", "General Bulacan", "General Pampanga",
+            "General Cavite", "General Laguna", "General Batangas", "General Quezon",
+
+            "Caloocan", "Las Pinas", "Makati", "Malabon", "Mandaluyong",
+            "Manila", "Marikina", "Muntinlupa", "Navotas", "Paranaque",
+            "Pasay", "Pasig", "Quezon City", "San Juan", "Taguig",
+            "Valenzuela", "Pateros", "BGC", "Alabang",
+
+            "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan",
+            "Bustos", "Calumpit", "Dona Remedios Trinidad", "Guiguinto",
+            "Hagonoy", "Malolos", "Marilao", "Meycauayan", "Norzagaray",
+            "Obando", "Pandi", "Paombong", "Plaridel", "Pulilan",
+            "San Ildefonso", "San Jose del Monte", "San Miguel",
+            "San Rafael", "Santa Maria",
+
+            "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba",
+            "Floridablanca", "Guagua", "Lubao", "Mabalacat", "Macabebe",
+            "Magalang", "Masantol", "Mexico", "Minalin", "Porac",
+            "San Fernando Pampanga", "San Luis", "San Simon",
+            "Santa Ana", "Santa Rita", "Santo Tomas", "Sasmuan",
+
+            "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba",
+            "Calauan", "Cavinti", "Famy", "Kalayaan", "Liliw",
+            "Los Banos", "Luisiana", "Lumban", "Mabitac", "Magdalena",
+            "Majayjay", "Nagcarlan", "Paete", "Pagsanjan", "Pakil",
+            "Pangil", "Pila", "Rizal Laguna", "San Pablo", "San Pedro",
+            "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
+            "Siniloan", "Victoria",
+
+            "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City",
+            "Bauan", "Calaca", "Calatagan", "Cuenca", "Ibaan",
+            "Laurel", "Lemery", "Lian", "Lipa", "Lobo", "Mabini",
+            "Malvar", "Mataasnakahoy", "Nasugbu", "Padre Garcia",
+            "Rosario Batangas", "San Jose Batangas", "San Juan Batangas",
+            "San Luis Batangas", "San Nicolas", "San Pascual",
+            "Santa Teresita", "Santo Tomas Batangas", "Taal", "Talisay Batangas",
+            "Tanauan", "Taysan", "Tingloy", "Tuy",
+
+            "Agdangan", "Alabat", "Atimonan", "Buenavista Quezon",
+            "Burdeos", "Calauag", "Candelaria Quezon", "Catanauan",
+            "Dolores Quezon", "General Luna Quezon", "General Nakar",
+            "Guinayangan", "Gumaca", "Infanta Quezon", "Jomalig",
+            "Lopez", "Lucban", "Lucena", "Macalelon", "Mauban",
+            "Mulanay", "Padre Burgos Quezon", "Pagbilao", "Panukulan",
+            "Patnanungan", "Perez", "Pitogo Quezon", "Plaridel Quezon",
+            "Polillo", "Quezon Quezon", "Real Quezon", "Sampaloc Quezon",
+            "San Andres Quezon", "San Antonio Quezon", "San Francisco Quezon",
+            "San Narciso Quezon", "Sariaya", "Tagkawayan", "Tayabas",
+            "Tiaong", "Unisan"
         )
 
         val found = knownPlaces.filter {
