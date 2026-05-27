@@ -141,7 +141,7 @@ class MainActivity : Activity() {
             setTextColor(gray)
         })
 
-        content.addView(imageView(R.drawable.hero_car, 230))
+        content.addView(imageView(R.drawable.hero_banner, 230))
 
         content.addView(TextView(this).apply {
             text = "Your Rides,\nYour Way\nAnytime,\nAnywhere!"
@@ -269,7 +269,7 @@ class MainActivity : Activity() {
                         option.contains("Search", true) || option.contains("suggestions", true) || option.contains("routes", true) -> showRoutes()
                         option.contains("Save", true) || option.contains("Add", true) -> showCreateRoute()
                         option.contains("Waze", true) -> openWaze("Imus, Cavite")
-                        option.contains("voice", true) -> speakTest(title)
+                        option.contains("voice", true) -> speakTest()
                     }
                 }
             })
@@ -285,7 +285,7 @@ class MainActivity : Activity() {
         content.addView(c)
     }
 
-    private fun speakTest(type: String) {
+    private fun speakTest() {
         tts?.speak(
             "Priority booking. Tanza to Imus. Fare 200 pesos. Distance 18 kilometers.",
             TextToSpeech.QUEUE_FLUSH,
@@ -389,7 +389,7 @@ class MainActivity : Activity() {
 
     private fun showAlertDemo() {
         clear()
-        content.addView(imageView(R.drawable.hero_car, 220))
+        content.addView(imageView(R.drawable.hero_banner, 220))
         content.addView(routeCard(RouteData("Tanza to Imus", "200", "18"), true))
     }
 
@@ -401,7 +401,7 @@ class MainActivity : Activity() {
         })
 
         content.addView(greenButton("Test Voice") {
-            speakTest("Booking")
+            speakTest()
         })
 
         content.addView(greenButton("Manage Routes") {
@@ -409,7 +409,7 @@ class MainActivity : Activity() {
         })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.2.3\nDriverMate PH"
+            text = "\nVersion 1.2.4\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
