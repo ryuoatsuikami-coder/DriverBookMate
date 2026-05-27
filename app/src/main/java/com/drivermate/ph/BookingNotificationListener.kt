@@ -28,10 +28,6 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         initTts()
-
-        handler.postDelayed({
-            speakNow("DriverMate PH notification reader is active.")
-        }, 1000)
     }
 
     private fun initTts() {
@@ -65,6 +61,10 @@ class BookingNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         initTts()
+
+        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
+        val voiceEnabled = prefs.getBoolean("voice_enabled", true)
+        val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
 
         val appPackage = sbn.packageName.lowercase()
 
@@ -108,31 +108,28 @@ class BookingNotificationListener : NotificationListenerService() {
         val fare = detectFare(fullText)
         val distance = detectDistance(fullText, route)
 
-        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
-        val preferredOnly = prefs.getBoolean("preferred_only", false)
-        val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
-
         val preferred = isPreferredRoute(route)
 
-        if (preferredOnly && !preferred) return
+        // IMPORTANT: Speak only preferred routes
+        if (!preferred) return
 
         val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
         val cleanDistance = if (distance == "not detected") "not detected" else "$distance kilometers"
 
         val message = "$bookingType booking. $route. Fare $cleanFare. Distance $cleanDistance."
 
-        speakNow(message)
+        if (voiceEnabled) {
+            speakNow(message)
+        }
 
-        if (preferred) {
+        handler.postDelayed({
+            openApp()
+        }, 4500)
+
+        if (autoOpenWaze && route != "Route not detected") {
             handler.postDelayed({
-                openApp()
-            }, 4500)
-
-            if (autoOpenWaze && route != "Route not detected") {
-                handler.postDelayed({
-                    openWaze(route)
-                }, 7500)
-            }
+                openWaze(route)
+            }, 7500)
         }
     }
 
@@ -267,7 +264,7 @@ class BookingNotificationListener : NotificationListenerService() {
 
     private fun isPreferredRoute(route: String): Boolean {
         val saved = getSavedRoutes()
-        if (saved.isEmpty()) return true
+        if (saved.isEmpty()) return false
 
         return saved.any {
             route.equals(it.route, true)
