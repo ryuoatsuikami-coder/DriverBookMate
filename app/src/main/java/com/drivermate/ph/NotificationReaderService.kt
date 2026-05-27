@@ -8,7 +8,7 @@ import java.util.Locale
 class NotificationReaderService : NotificationListenerService(), TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = null
-    private var isTtsReady = false
+    private var ready = false
 
     override fun onCreate() {
         super.onCreate()
@@ -17,16 +17,12 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            // Filipino/Philippines accent if available on phone
             val result = tts?.setLanguage(Locale("en", "PH"))
-
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 tts?.language = Locale.ENGLISH
             }
-
             tts?.setSpeechRate(0.90f)
-            tts?.setPitch(1.0f)
-            isTtsReady = true
+            ready = true
         }
     }
 
@@ -37,52 +33,53 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
         val text = extras.getCharSequence("android.text")?.toString().orEmpty()
         val bigText = extras.getCharSequence("android.bigText")?.toString().orEmpty()
 
-        val rawMessage = "$title $text $bigText"
+        val raw = "$title $text $bigText"
             .replace("\n", " ")
             .replace(Regex("\\s+"), " ")
             .trim()
 
-        if (rawMessage.isBlank()) return
+        if (raw.isBlank()) return
 
-        val bookingType = detectBookingType(rawMessage)
-        val route = detectRoute(rawMessage)
-        val fare = detectFare(rawMessage)
-        val distance = detectDistance(rawMessage)
+        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
+        val preferredOnly = prefs.getBoolean("preferred_only", false)
+        val keywords = prefs.getString("preferred_keywords", "") ?: ""
 
-        val spokenMessage = buildString {
-            append("$bookingType booking. ")
+        val isPreferred = keywords.split(",")
+            .map { it.trim().lowercase() }
+            .filter { it.isNotBlank() }
+            .any { raw.lowercase().contains(it) }
+
+        if (preferredOnly && !isPreferred) return
+
+        val bookingType = detectBookingType(raw)
+        val route = detectRoute(raw)
+        val fare = detectFare(raw)
+
+        val message = buildString {
+            append("$bookingType. ")
 
             if (route.isNotBlank()) {
-                append("$route. ")
-            } else {
-                append(rawMessage.take(120))
-                append(". ")
+                append("From $route. ")
             }
 
             if (fare.isNotBlank()) {
-                append("$fare pesos. ")
+                append("Fare $fare pesos.")
             }
+        }.trim()
 
-            if (distance.isNotBlank()) {
-                append("Distance from you: $distance. ")
-            } else {
-                append("Distance not shown. ")
-            }
+        if (message.isNotBlank()) {
+            speak(message)
         }
-
-        speak(spokenMessage)
     }
 
     private fun detectBookingType(message: String): String {
         val lower = message.lowercase()
-
         return when {
+            lower.contains("priority") -> "Priority"
             lower.contains("immediate") -> "Immediate"
             lower.contains("regular") -> "Regular"
             lower.contains("pooling") -> "Pooling"
-            lower.contains("priority") -> "Priority"
-            lower.contains("rush") -> "Priority"
-            else -> "New"
+            else -> "Booking"
         }
     }
 
@@ -90,14 +87,13 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
         val cleaned = message.replace("→", " to ")
 
         val patterns = listOf(
-            Regex("([A-Za-zñÑ .'-]+)\\s+to\\s+([A-Za-zñÑ .'-]+)", RegexOption.IGNORE_CASE),
-            Regex("pickup[:\\s]+([A-Za-zñÑ .'-]+).*drop\\s?off[:\\s]+([A-Za-zñÑ .'-]+)", RegexOption.IGNORE_CASE),
-            Regex("from[:\\s]+([A-Za-zñÑ .'-]+).*to[:\\s]+([A-Za-zñÑ .'-]+)", RegexOption.IGNORE_CASE)
+            Regex("from\\s+([A-Za-zñÑ .'-]+)\\s+to\\s+([A-Za-zñÑ .'-]+)", RegexOption.IGNORE_CASE),
+            Regex("([A-Za-zñÑ .'-]+)\\s+to\\s+([A-Za-zñÑ .'-]+)", RegexOption.IGNORE_CASE)
         )
 
         for (pattern in patterns) {
             val match = pattern.find(cleaned)
-            if (match != null && match.groupValues.size >= 3) {
+            if (match != null) {
                 val pickup = match.groupValues[1].trim()
                 val dropoff = match.groupValues[2].trim()
                 return "$pickup to $dropoff"
@@ -124,29 +120,11 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
         return ""
     }
 
-    private fun detectDistance(message: String): String {
-        val patterns = listOf(
-            Regex("([0-9]+(?:\\.[0-9]+)?)\\s?km", RegexOption.IGNORE_CASE),
-            Regex("([0-9]+(?:\\.[0-9]+)?)\\s?kilometers", RegexOption.IGNORE_CASE),
-            Regex("distance[:\\s]+([0-9]+(?:\\.[0-9]+)?\\s?(?:km|kilometers))", RegexOption.IGNORE_CASE)
-        )
-
-        for (pattern in patterns) {
-            val match = pattern.find(message)
-            if (match != null) {
-                return match.value
-            }
-        }
-
-        return ""
-    }
-
     private fun speak(message: String) {
-        if (!isTtsReady) return
-
+        if (!ready) return
         tts?.speak(
             message,
-            TextToSpeech.QUEUE_ADD,
+            TextToSpeech.QUEUE_FLUSH,
             null,
             System.currentTimeMillis().toString()
         )
