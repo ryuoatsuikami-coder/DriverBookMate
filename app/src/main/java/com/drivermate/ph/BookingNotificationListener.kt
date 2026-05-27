@@ -108,10 +108,13 @@ class BookingNotificationListener : NotificationListenerService() {
         val fare = detectFare(fullText)
         val distance = detectDistanceFromNotification(fullText)
 
-        val firstPreferredRoute = getSavedRoutes().firstOrNull()
-        val isFirstPreferred = firstPreferredRoute != null && route.equals(firstPreferredRoute.route, true)
+        val savedRoutes = getSavedRoutes()
+        val matchedRoute = savedRoutes.firstOrNull { route.equals(it.route, true) }
 
-        if (!isFirstPreferred) return
+        if (matchedRoute == null) return
+
+        val firstPreferredRoute = savedRoutes.firstOrNull()
+        val isFirstPreferred = firstPreferredRoute != null && route.equals(firstPreferredRoute.route, true)
 
         val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
         val cleanDistance = if (distance == "not detected") "not detected" else "$distance kilometers"
@@ -126,7 +129,7 @@ class BookingNotificationListener : NotificationListenerService() {
             openApp()
         }, 3500)
 
-        if (autoOpenWaze && route != "Route not detected") {
+        if (autoOpenWaze && isFirstPreferred && route != "Route not detected") {
             handler.postDelayed({
                 openWaze(route)
             }, 6000)
