@@ -3,6 +3,7 @@ package com.drivermate.ph
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -27,7 +28,7 @@ class MainActivity : Activity() {
     private val green = Color.rgb(0, 150, 45)
     private val bg = Color.rgb(247, 255, 249)
     private val dark = Color.rgb(25, 35, 30)
-    private val redOrange = Color.rgb(255, 92, 35)
+    private val orange = Color.rgb(255, 92, 35)
     private val gray = Color.rgb(110, 120, 115)
 
     private val cavitePlaces = listOf(
@@ -71,7 +72,7 @@ class MainActivity : Activity() {
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(24, 24, 24, 24)
+            setPadding(22, 22, 22, 22)
             setBackgroundColor(bg)
             layoutParams = LinearLayout.LayoutParams(-1, -2)
             minimumHeight = resources.displayMetrics.heightPixels
@@ -117,16 +118,6 @@ class MainActivity : Activity() {
         scrollView.post { scrollView.scrollTo(0, 0) }
     }
 
-    private fun imageView(resId: Int, height: Int): ImageView {
-        return ImageView(this).apply {
-            setImageResource(resId)
-            adjustViewBounds = true
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setPadding(0, 8, 0, 8)
-            layoutParams = LinearLayout.LayoutParams(-1, height)
-        }
-    }
-
     private fun card(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -159,28 +150,19 @@ class MainActivity : Activity() {
             textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
-            setTypeface(null, 1)
+            setTypeface(null, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
         content.addView(TextView(this).apply {
-            text = "Smart booking alerts for drivers"
+            text = "Smart booking alerts for preferred routes"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
             layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
-        content.addView(imageView(R.drawable.hero_banner, 280))
-
-        content.addView(TextView(this).apply {
-            text = "Your Rides,\nYour Way\nAnytime,\nAnywhere!"
-            textSize = 28f
-            setTextColor(dark)
-            setTypeface(null, 1)
-            setPadding(0, 8, 0, 14)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
-        })
+        addHeroBanner()
 
         addDropdownCategory(
             R.drawable.package_truck,
@@ -203,42 +185,35 @@ class MainActivity : Activity() {
             listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
         )
 
-        content.addView(TextView(this).apply {
-            text = "Preferred Route Preview"
-            textSize = 16f
-            setTextColor(dark)
-            setTypeface(null, 1)
-            setPadding(0, 14, 0, 6)
-        })
+        addPreferredRoutesDropdown()
+        addVoiceAndWazeSwitches()
+    }
 
-        val preferred = getSavedRoutes().firstOrNull()
-        content.addView(routeCard(preferred ?: RouteData("Tanza to Imus", "200", "18"), preferred != null))
-
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 8, 0, 24)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
+    private fun addHeroBanner() {
+        val frame = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(-1, 360).apply {
+                setMargins(0, 14, 0, 16)
+            }
+            setBackgroundColor(Color.rgb(225, 250, 235))
         }
 
-        row.addView(Switch(this).apply {
-            text = "Preferred\nOnly"
-            textSize = 12f
-            isChecked = prefs.getBoolean("preferred_only", false)
-            setOnCheckedChangeListener { _, checked ->
-                prefs.edit().putBoolean("preferred_only", checked).apply()
-            }
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+        frame.addView(ImageView(this).apply {
+            setImageResource(R.drawable.hero_banner)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            alpha = 0.95f
+        }, FrameLayout.LayoutParams(-1, -1))
 
-        row.addView(Switch(this).apply {
-            text = "Auto\nWaze"
-            textSize = 12f
-            isChecked = prefs.getBoolean("auto_open_waze", true)
-            setOnCheckedChangeListener { _, checked ->
-                prefs.edit().putBoolean("auto_open_waze", checked).apply()
-            }
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+        frame.addView(TextView(this).apply {
+            text = "Your Rides,\nYour Way\nAnytime,\nAnywhere!"
+            textSize = 32f
+            setTextColor(Color.WHITE)
+            setTypeface(null, Typeface.BOLD)
+            setShadowLayer(8f, 2f, 2f, Color.rgb(20, 60, 30))
+            gravity = Gravity.BOTTOM or Gravity.START
+            setPadding(26, 0, 26, 34)
+        }, FrameLayout.LayoutParams(-1, -1))
 
-        content.addView(row)
+        content.addView(frame)
     }
 
     private fun addDropdownCategory(imageRes: Int, title: String, desc: String, options: List<String>) {
@@ -253,18 +228,18 @@ class MainActivity : Activity() {
         header.addView(ImageView(this).apply {
             setImageResource(imageRes)
             scaleType = ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(110, 110))
+        }, LinearLayout.LayoutParams(145, 145))
 
         header.addView(TextView(this).apply {
             text = "$title\n$desc"
-            textSize = 15f
+            textSize = 16f
             setTextColor(dark)
             setPadding(14, 0, 0, 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
         val arrow = TextView(this).apply {
             text = "▼"
-            textSize = 22f
+            textSize = 24f
             setTextColor(green)
         }
 
@@ -275,7 +250,6 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             setPadding(0, 12, 0, 0)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         options.forEach { option ->
@@ -310,7 +284,84 @@ class MainActivity : Activity() {
         content.addView(c)
     }
 
+    private fun addPreferredRoutesDropdown() {
+        val c = card()
+
+        val title = TextView(this).apply {
+            text = "Preferred Route Preview ▼"
+            textSize = 17f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        }
+
+        c.addView(title)
+
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(0, 10, 0, 0)
+        }
+
+        val saved = getSavedRoutes()
+
+        if (saved.isEmpty()) {
+            box.addView(routeCard(RouteData("No preferred route saved", "0", "0"), false))
+        } else {
+            saved.forEach {
+                box.addView(routeCard(it, true))
+            }
+        }
+
+        c.addView(box)
+
+        title.setOnClickListener {
+            box.visibility = if (box.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+            title.text = if (box.visibility == View.VISIBLE) "Preferred Route Preview ▲" else "Preferred Route Preview ▼"
+        }
+
+        content.addView(c)
+    }
+
+    private fun addVoiceAndWazeSwitches() {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 8, 0, 24)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+        }
+
+        row.addView(Switch(this).apply {
+            text = "Voice\nMessage"
+            textSize = 12f
+            isChecked = prefs.getBoolean("voice_enabled", true)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("voice_enabled", checked).apply()
+            }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        row.addView(Switch(this).apply {
+            text = "Auto\nWaze"
+            textSize = 12f
+            isChecked = prefs.getBoolean("auto_open_waze", true)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("auto_open_waze", checked).apply()
+            }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        row.addView(ImageView(this).apply {
+            setImageResource(R.drawable.waze_icon)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setOnClickListener { openWaze("Imus, Cavite") }
+        }, LinearLayout.LayoutParams(90, 90))
+
+        content.addView(row)
+    }
+
     private fun speakTest() {
+        if (!prefs.getBoolean("voice_enabled", true)) {
+            Toast.makeText(this, "Voice Message is OFF", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         tts?.speak(
             "Priority booking. Tanza to Imus. Fare 200 pesos. Distance 18 kilometers.",
             TextToSpeech.QUEUE_FLUSH,
@@ -327,15 +378,13 @@ class MainActivity : Activity() {
             textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
-            setTypeface(null, 1)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setTypeface(null, Typeface.BOLD)
         })
 
         val search = EditText(this).apply {
             hint = "Search routes..."
             inputType = InputType.TYPE_CLASS_TEXT
             setSingleLine(true)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         content.addView(search)
@@ -343,7 +392,6 @@ class MainActivity : Activity() {
         val listBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 12, 0, 24)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         content.addView(listBox)
@@ -383,8 +431,7 @@ class MainActivity : Activity() {
             textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
-            setTypeface(null, 1)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setTypeface(null, Typeface.BOLD)
         })
 
         val from = Spinner(this)
@@ -418,7 +465,7 @@ class MainActivity : Activity() {
 
     private fun showAlertDemo() {
         clear()
-        content.addView(imageView(R.drawable.hero_banner, 280))
+        addHeroBanner()
         content.addView(routeCard(RouteData("Tanza to Imus", "200", "18"), true))
         content.addView(greenButton("Test Voice Alert") { speakTest() })
         content.addView(greenButton("Open Waze") { openWaze("Imus, Cavite") })
@@ -432,8 +479,7 @@ class MainActivity : Activity() {
             textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
-            setTypeface(null, 1)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
+            setTypeface(null, Typeface.BOLD)
         })
 
         content.addView(greenButton("Notification Access") {
@@ -449,11 +495,10 @@ class MainActivity : Activity() {
         })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.2.6\nDriverMate PH"
+            text = "\nVersion 1.2.7\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
-            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
     }
 
@@ -465,13 +510,13 @@ class MainActivity : Activity() {
             text = "📍 ${route.route}        $badge"
             textSize = 16f
             setTextColor(dark)
-            setTypeface(null, 1)
+            setTypeface(null, Typeface.BOLD)
         })
 
         c.addView(TextView(this).apply {
             text = "₱${route.fare}     •     ${route.distance} km"
             textSize = 14f
-            setTextColor(if (preferred) green else redOrange)
+            setTextColor(if (preferred) green else orange)
         })
 
         return c
