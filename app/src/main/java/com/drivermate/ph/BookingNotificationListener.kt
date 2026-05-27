@@ -2,19 +2,22 @@ package com.drivermate.ph
 
 import android.app.Notification
 import android.content.Intent
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.speech.tts.TextToSpeech
+import android.widget.Toast
 import java.util.Locale
+import kotlin.math.abs
 
 class BookingNotificationListener : NotificationListenerService() {
 
     private var tts: TextToSpeech? = null
     private var ttsReady = false
-    private var pendingMessage: String? = null
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -24,7 +27,9 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         initTts()
-        speakNow("DriverMate PH notification reader is active.")
+        handler.postDelayed({
+            speakNow("DriverMate PH notification reader is active.")
+        }, 800)
     }
 
     private fun initTts() {
@@ -34,18 +39,20 @@ class BookingNotificationListener : NotificationListenerService() {
             if (status == TextToSpeech.SUCCESS) {
                 ttsReady = true
 
-                val result = tts?.setLanguage(Locale("en", "PH"))
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                val langResult = tts?.setLanguage(Locale("en", "PH"))
+                if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
                     tts?.language = Locale.US
                 }
 
-                tts?.setSpeechRate(0.88f)
-                tts?.setPitch(1.02f)
+                tts?.setSpeechRate(0.85f)
+                tts?.setPitch(1.03f)
 
-                pendingMessage?.let {
-                    speakNow(it)
-                    pendingMessage = null
-                }
+                tts?.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
             }
         }
     }
@@ -53,7 +60,7 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         initTts()
 
-        val packageName = sbn.packageName.lowercase()
+        val appPackage = sbn.packageName.lowercase()
 
         val allowedApps = listOf(
             "lalamove",
@@ -64,7 +71,7 @@ class BookingNotificationListener : NotificationListenerService() {
             "joyride"
         )
 
-        if (allowedApps.none { packageName.contains(it) }) return
+        if (allowedApps.none { appPackage.contains(it) }) return
 
         val extras = sbn.notification.extras
 
@@ -97,15 +104,22 @@ class BookingNotificationListener : NotificationListenerService() {
 
         if (preferredOnly && !preferred) return
 
-        val message = "$bookingType booking. $route. Fare $fare pesos. Distance $distance kilometers."
+        val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
+        val cleanDistance = if (distance == "not detected") "not detected" else "$distance kilometers"
+
+        val message = "$bookingType booking. $route. Fare $cleanFare. Distance $cleanDistance."
 
         speakNow(message)
 
         if (preferred) {
-            openApp()
+            handler.postDelayed({
+                openApp()
+            }, 3500)
 
-            if (autoOpenWaze) {
-                openWaze(route)
+            if (autoOpenWaze && route != "Route not detected") {
+                handler.postDelayed({
+                    openWaze(route)
+                }, 6000)
             }
         }
     }
@@ -113,20 +127,16 @@ class BookingNotificationListener : NotificationListenerService() {
     private fun speakNow(message: String) {
         initTts()
 
-        if (!ttsReady) {
-            pendingMessage = message
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (ttsReady) {
-                    tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "booking_alert")
-                    pendingMessage = null
-                }
-            }, 1200)
-            return
-        }
-
-        Handler(Looper.getMainLooper()).post {
-            tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "booking_alert")
-        }
+        handler.postDelayed({
+            if (ttsReady) {
+                tts?.stop()
+                tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "booking_alert_${System.currentTimeMillis()}")
+            } else {
+                handler.postDelayed({
+                    tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "booking_alert_retry")
+                }, 1500)
+            }
+        }, 300)
     }
 
     private fun detectBookingType(text: String): String {
@@ -165,14 +175,11 @@ class BookingNotificationListener : NotificationListenerService() {
 
         val knownPlaces = listOf(
             "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
-            "Dasmarinas", "General Emilio Aguinaldo", "General Mariano Alvarez",
-            "General Trias", "Imus", "Indang", "Kawit", "Magallanes",
-            "Maragondon", "Mendez", "Naic", "Noveleta", "Rosario",
-            "Silang", "Tagaytay", "Tanza", "Ternate", "Trece Martires",
-            "Manila", "Pasay", "Makati", "BGC", "Taguig", "Paranaque",
-            "Las Pinas", "Alabang", "Quezon City", "Mandaluyong",
-            "San Juan", "Pasig", "Marikina", "Caloocan", "Malabon",
-            "Navotas", "Valenzuela", "Muntinlupa"
+            "Dasmarinas", "General Trias", "Imus", "Indang", "Kawit",
+            "Naic", "Noveleta", "Rosario", "Silang", "Tagaytay",
+            "Tanza", "Ternate", "Trece Martires", "Manila", "Pasay",
+            "Makati", "BGC", "Taguig", "Paranaque", "Las Pinas",
+            "Alabang", "Quezon City", "Pasig", "Muntinlupa"
         )
 
         val found = knownPlaces.filter {
@@ -208,9 +215,6 @@ class BookingNotificationListener : NotificationListenerService() {
 
     private fun detectDistance(text: String, route: String): String {
         val patterns = listOf(
-            Regex("""(?:distance|total distance|trip distance|route distance)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
-            Regex("""(?:pickup distance|pickup)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
-            Regex("""(?:dropoff distance|drop off distance|dropoff|drop off)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
             Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
         )
 
@@ -228,31 +232,10 @@ class BookingNotificationListener : NotificationListenerService() {
 
     private fun isPreferredRoute(route: String, fare: String, distance: String): Boolean {
         val saved = getSavedRoutes()
-
         if (saved.isEmpty()) return true
 
         return saved.any {
-            val routeMatch = route.equals(it.route, true)
-
-            val fareMatch =
-                it.fare.isBlank() ||
-                fare == "not detected" ||
-                fare.toDoubleOrNull()?.let { detectedFare ->
-                    it.fare.toDoubleOrNull()?.let { savedFare ->
-                        detectedFare >= savedFare
-                    }
-                } ?: true
-
-            val distanceMatch =
-                it.distance.isBlank() ||
-                distance == "not detected" ||
-                distance.toDoubleOrNull()?.let { detectedDistance ->
-                    it.distance.toDoubleOrNull()?.let { savedDistance ->
-                        detectedDistance <= savedDistance
-                    }
-                } ?: true
-
-            routeMatch && fareMatch && distanceMatch
+            route.equals(it.route, true)
         }
     }
 
@@ -273,13 +256,12 @@ class BookingNotificationListener : NotificationListenerService() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-
         startActivity(intent)
     }
 
     private fun openWaze(route: String) {
         val destination = extractDestination(route)
-        if (destination.isBlank() || destination == "Route not detected") return
+        if (destination.isBlank()) return
 
         val encodedDestination = Uri.encode(destination)
         val wazeUri = Uri.parse("waze://?q=$encodedDestination&navigate=yes")
@@ -291,21 +273,20 @@ class BookingNotificationListener : NotificationListenerService() {
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            val browserUri = Uri.parse("https://waze.com/ul?q=$encodedDestination&navigate=yes")
-            val browserIntent = Intent(Intent.ACTION_VIEW, browserUri).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(browserIntent)
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://waze.com/ul?q=$encodedDestination&navigate=yes")
+                ).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
         }
     }
 
     private fun extractDestination(route: String): String {
         val parts = route.split(" to ")
-        return if (parts.size >= 2) {
-            parts[1].trim()
-        } else {
-            route.trim()
-        }
+        return if (parts.size >= 2) parts[1].trim() else route.trim()
     }
 
     data class RouteData(
