@@ -28,6 +28,9 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         initTts()
+        handler.postDelayed({
+            speakNow("DriverMate PH notification reader is active.")
+        }, 1000)
     }
 
     private fun initTts() {
@@ -67,6 +70,8 @@ class BookingNotificationListener : NotificationListenerService() {
         val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
         val firstPriorityRoute = prefs.getString("first_priority_route", "") ?: ""
 
+        if (!voiceEnabled) return
+
         val appPackage = sbn.packageName.lowercase()
 
         val allowedApps = listOf(
@@ -105,36 +110,53 @@ class BookingNotificationListener : NotificationListenerService() {
         lastSpokenTime = now
 
         val bookingType = detectBookingType(fullText)
-        val route = detectRoute(fullText)
+        val detectedRoute = detectRoute(fullText)
         val fare = detectFare(fullText)
         val distance = detectDistanceFromNotification(fullText)
 
         val savedRoutes = getSavedRoutes()
-        val matchedRoute = savedRoutes.firstOrNull { route.equals(it.route, true) }
+
+        val matchedRoute = savedRoutes.firstOrNull {
+            detectedRoute.equals(it.route, true) ||
+                fullText.lowercase().contains(it.route.lowercase()) ||
+                routePartsMatch(fullText, it.route)
+        }
 
         if (matchedRoute == null) return
+
+        val finalRoute = matchedRoute.route
 
         val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
         val cleanDistance = if (distance == "not detected") "not detected" else "$distance kilometers"
 
-        val message = "$bookingType booking. $route. Fare $cleanFare. Distance $cleanDistance."
+        val message = "$bookingType booking. $finalRoute. Fare $cleanFare. Distance $cleanDistance."
 
-        if (voiceEnabled) {
-            speakNow(message)
-        }
+        speakNow(message)
 
         handler.postDelayed({
             openApp()
         }, 3500)
 
         val isManualFirstPriority =
-            firstPriorityRoute.isNotBlank() && route.equals(firstPriorityRoute, true)
+            firstPriorityRoute.isNotBlank() && finalRoute.equals(firstPriorityRoute, true)
 
-        if (autoOpenWaze && isManualFirstPriority && route != "Route not detected") {
+        if (autoOpenWaze && isManualFirstPriority) {
             handler.postDelayed({
-                openWaze(route)
+                openWaze(finalRoute)
             }, 6000)
         }
+    }
+
+    private fun routePartsMatch(fullText: String, savedRoute: String): Boolean {
+        val lowerText = fullText.lowercase()
+        val parts = savedRoute.split(" to ")
+
+        if (parts.size != 2) return false
+
+        val from = parts[0].trim().lowercase()
+        val to = parts[1].trim().lowercase()
+
+        return lowerText.contains(from) && lowerText.contains(to)
     }
 
     private fun speakNow(message: String) {
@@ -156,7 +178,7 @@ class BookingNotificationListener : NotificationListenerService() {
     }
 
     private fun retrySpeak(message: String, attempt: Int) {
-        if (attempt > 3) return
+        if (attempt > 5) return
 
         handler.postDelayed({
             if (ttsReady && tts != null) {
@@ -171,7 +193,7 @@ class BookingNotificationListener : NotificationListenerService() {
                 initTts()
                 retrySpeak(message, attempt + 1)
             }
-        }, 1200)
+        }, 1000)
     }
 
     private fun detectBookingType(text: String): String {
@@ -209,72 +231,7 @@ class BookingNotificationListener : NotificationListenerService() {
             }
         }
 
-        val knownPlaces = listOf(
-            "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
-            "Dasmarinas", "General Trias", "Imus", "Indang", "Kawit",
-            "Naic", "Noveleta", "Rosario", "Silang", "Tagaytay",
-            "Tanza", "Ternate", "Trece Martires",
-
-            "General Manila", "General Bulacan", "General Pampanga",
-            "General Cavite", "General Laguna", "General Batangas", "General Quezon",
-
-            "Caloocan", "Las Pinas", "Makati", "Malabon", "Mandaluyong",
-            "Manila", "Marikina", "Muntinlupa", "Navotas", "Paranaque",
-            "Pasay", "Pasig", "Quezon City", "San Juan", "Taguig",
-            "Valenzuela", "Pateros", "BGC", "Alabang",
-
-            "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan",
-            "Bustos", "Calumpit", "Dona Remedios Trinidad", "Guiguinto",
-            "Hagonoy", "Malolos", "Marilao", "Meycauayan", "Norzagaray",
-            "Obando", "Pandi", "Paombong", "Plaridel", "Pulilan",
-            "San Ildefonso", "San Jose del Monte", "San Miguel",
-            "San Rafael", "Santa Maria",
-
-            "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba",
-            "Floridablanca", "Guagua", "Lubao", "Mabalacat", "Macabebe",
-            "Magalang", "Masantol", "Mexico", "Minalin", "Porac",
-            "San Fernando Pampanga", "San Luis", "San Simon",
-            "Santa Ana", "Santa Rita", "Santo Tomas", "Sasmuan",
-
-            "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba",
-            "Calauan", "Cavinti", "Famy", "Kalayaan", "Liliw",
-            "Los Banos", "Luisiana", "Lumban", "Mabitac", "Magdalena",
-            "Majayjay", "Nagcarlan", "Paete", "Pagsanjan", "Pakil",
-            "Pangil", "Pila", "Rizal Laguna", "San Pablo", "San Pedro",
-            "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
-            "Siniloan", "Victoria",
-
-            "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City",
-            "Bauan", "Calaca", "Calatagan", "Cuenca", "Ibaan",
-            "Laurel", "Lemery", "Lian", "Lipa", "Lobo", "Mabini",
-            "Malvar", "Mataasnakahoy", "Nasugbu", "Padre Garcia",
-            "Rosario Batangas", "San Jose Batangas", "San Juan Batangas",
-            "San Luis Batangas", "San Nicolas", "San Pascual",
-            "Santa Teresita", "Santo Tomas Batangas", "Taal", "Talisay Batangas",
-            "Tanauan", "Taysan", "Tingloy", "Tuy",
-
-            "Agdangan", "Alabat", "Atimonan", "Buenavista Quezon",
-            "Burdeos", "Calauag", "Candelaria Quezon", "Catanauan",
-            "Dolores Quezon", "General Luna Quezon", "General Nakar",
-            "Guinayangan", "Gumaca", "Infanta Quezon", "Jomalig",
-            "Lopez", "Lucban", "Lucena", "Macalelon", "Mauban",
-            "Mulanay", "Padre Burgos Quezon", "Pagbilao", "Panukulan",
-            "Patnanungan", "Perez", "Pitogo Quezon", "Plaridel Quezon",
-            "Polillo", "Quezon Quezon", "Real Quezon", "Sampaloc Quezon",
-            "San Andres Quezon", "San Antonio Quezon", "San Francisco Quezon",
-            "San Narciso Quezon", "Sariaya", "Tagkawayan", "Tayabas",
-            "Tiaong", "Unisan"
-        )
-
-        val found = knownPlaces.filter {
-            text.lowercase().contains(it.lowercase())
-        }
-
-        return if (found.size >= 2) {
-            "${found[0]} to ${found[1]}"
-        } else {
-            "Route not detected"
-        }
+        return "Route not detected"
     }
 
     private fun detectFare(text: String): String {
