@@ -35,21 +35,63 @@ class MainActivity : Activity() {
     private val cavitePlaces = listOf(
         "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
         "Dasmarinas", "General Trias", "Imus", "Indang", "Kawit",
-        "Naic", "Noveleta", "Rosario", "Silang", "Tagaytay",
-        "Tanza", "Ternate", "Trece Martires"
+        "Magallanes Cavite", "Maragondon", "Mendez", "Naic", "Noveleta",
+        "Rosario", "Silang", "Tagaytay", "Tanza", "Ternate", "Trece Martires"
     )
 
     private val manilaPlaces = listOf(
-        "Manila", "Pasay", "Makati", "BGC", "Taguig", "Paranaque",
-        "Las Pinas", "Alabang", "Quezon City", "Pasig", "Muntinlupa"
+        "Manila", "Caloocan", "Las Pinas", "Makati", "Malabon",
+        "Mandaluyong", "Marikina", "Muntinlupa", "Navotas", "Paranaque",
+        "Pasay", "Pasig", "Pateros", "Quezon City", "San Juan",
+        "Taguig", "Valenzuela", "BGC", "Alabang"
     )
 
-    private val hiddenIntercityAreas = listOf(
-        "Caloocan", "Malabon", "Mandaluyong", "Marikina", "Navotas",
-        "San Juan", "Valenzuela", "Pateros"
+    private val lagunaPlaces = listOf(
+        "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba",
+        "Calauan", "Cavinti", "Famy", "Kalayaan", "Liliw",
+        "Los Banos", "Luisiana", "Lumban", "Mabitac", "Magdalena",
+        "Majayjay", "Nagcarlan", "Paete", "Pagsanjan", "Pakil",
+        "Pangil", "Pila", "Rizal Laguna", "San Pablo", "San Pedro",
+        "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
+        "Siniloan", "Victoria"
     )
 
-    private val allPlaces = (cavitePlaces + manilaPlaces + hiddenIntercityAreas).distinct().sorted()
+    private val batangasPlaces = listOf(
+        "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City",
+        "Bauan", "Calaca", "Calatagan", "Cuenca", "Ibaan",
+        "Laurel", "Lemery", "Lian", "Lipa", "Lobo", "Mabini",
+        "Malvar", "Mataasnakahoy", "Nasugbu", "Padre Garcia",
+        "Rosario Batangas", "San Jose Batangas", "San Juan Batangas",
+        "San Luis Batangas", "San Nicolas", "San Pascual",
+        "Santa Teresita", "Santo Tomas Batangas", "Taal",
+        "Talisay Batangas", "Tanauan", "Taysan", "Tingloy", "Tuy"
+    )
+
+    private val bulacanPlaces = listOf(
+        "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan",
+        "Bustos", "Calumpit", "Dona Remedios Trinidad", "Guiguinto",
+        "Hagonoy", "Malolos", "Marilao", "Meycauayan", "Norzagaray",
+        "Obando", "Pandi", "Paombong", "Plaridel", "Pulilan",
+        "San Ildefonso", "San Jose del Monte", "San Miguel",
+        "San Rafael", "Santa Maria Bulacan"
+    )
+
+    private val pampangaPlaces = listOf(
+        "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba",
+        "Floridablanca", "Guagua", "Lubao", "Mabalacat", "Macabebe",
+        "Magalang", "Masantol", "Mexico", "Minalin", "Porac",
+        "San Fernando Pampanga", "San Luis Pampanga", "San Simon",
+        "Santa Ana Pampanga", "Santa Rita", "Santo Tomas Pampanga", "Sasmuan"
+    )
+
+    private val allPlaces = (
+        cavitePlaces +
+            manilaPlaces +
+            lagunaPlaces +
+            batangasPlaces +
+            bulacanPlaces +
+            pampangaPlaces
+        ).distinct().sorted()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,7 +147,6 @@ class MainActivity : Activity() {
 
     private fun showHome() {
         clear()
-
         addTopBar()
         addHeroBanner()
 
@@ -126,7 +167,7 @@ class MainActivity : Activity() {
         addCategoryCard(
             R.drawable.intercity_car,
             "Book Intercity Ride",
-            "Cavite, Manila, and intercity route alerts.",
+            "Cavite, Manila, Laguna, Batangas, Bulacan, and Pampanga route alerts.",
             listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
         )
 
@@ -685,7 +726,7 @@ class MainActivity : Activity() {
 
             val results = allPlaces
                 .filter { it.startsWith(q, true) }
-                .take(12)
+                .take(30)
 
             results.forEach { place ->
                 box.addView(TextView(this).apply {
@@ -794,7 +835,7 @@ class MainActivity : Activity() {
         content.addView(greenButton("Manage Routes") { showRoutes() })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.4.2\nDriverMate PH"
+            text = "\nVersion 1.4.3\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
@@ -920,7 +961,12 @@ class MainActivity : Activity() {
         val a = abs(from.hashCode() % 35)
         val b = abs(to.hashCode() % 35)
         val base = abs(a - b) + 8
-        val intercity = hiddenIntercityAreas.contains(from) || hiddenIntercityAreas.contains(to)
+        val intercity =
+            lagunaPlaces.contains(from) || lagunaPlaces.contains(to) ||
+                batangasPlaces.contains(from) || batangasPlaces.contains(to) ||
+                bulacanPlaces.contains(from) || bulacanPlaces.contains(to) ||
+                pampangaPlaces.contains(from) || pampangaPlaces.contains(to)
+
         val manilaRoute = manilaPlaces.contains(from) || manilaPlaces.contains(to)
 
         return when {
