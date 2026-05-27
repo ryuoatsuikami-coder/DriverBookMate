@@ -1,5 +1,6 @@
 package com.drivermate.ph
 
+import android.content.Intent
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.speech.tts.TextToSpeech
@@ -56,7 +57,9 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
         val fareMatch = savedFares.isEmpty() || fareMatches(savedFares, fare)
         val distanceMatch = savedDistances.isEmpty() || distanceMatches(savedDistances, distance)
 
-        if (preferredOnly && !(routeMatch && fareMatch && distanceMatch)) return
+        val isPreferred = routeMatch && fareMatch && distanceMatch
+
+        if (preferredOnly && !isPreferred) return
 
         val message = buildString {
             append("$bookingName. ")
@@ -70,7 +73,22 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
             }
         }.trim()
 
-        if (message.isNotBlank()) speak(message)
+        if (message.isNotBlank()) {
+            speak(message)
+        }
+
+        if (isPreferred) {
+            openDriverMateApp()
+        }
+    }
+
+    private fun openDriverMateApp() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra("opened_from_preferred_booking", true)
+        }
+        startActivity(intent)
     }
 
     private fun getSavedList(key: String): List<String> {
