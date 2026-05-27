@@ -20,7 +20,9 @@ class MainActivity : Activity() {
 
     private val prefs by lazy { getSharedPreferences("driver_mate_settings", MODE_PRIVATE) }
     private var tts: TextToSpeech? = null
+
     private lateinit var content: LinearLayout
+    private lateinit var scrollView: ScrollView
 
     private val green = Color.rgb(0, 150, 45)
     private val bg = Color.rgb(247, 255, 249)
@@ -55,17 +57,29 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(bg)
+            layoutParams = LinearLayout.LayoutParams(-1, -1)
+        }
+
+        scrollView = ScrollView(this).apply {
+            fillViewport = true
+            isFillViewport = true
+            setBackgroundColor(bg)
+            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
         }
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(22, 20, 22, 10)
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(bg)
+            layoutParams = ScrollView.LayoutParams(-1, -2)
+            minimumHeight = resources.displayMetrics.heightPixels
         }
 
-        root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
+        scrollView.addView(content)
+        root.addView(scrollView)
         root.addView(bottomNav())
-        setContentView(root)
 
+        setContentView(root)
         showHome()
     }
 
@@ -73,8 +87,9 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(8, 8, 8, 8)
+            setPadding(10, 10, 10, 10)
             setBackgroundColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
 
             addView(navButton("🏠\nHome") { showHome() })
             addView(navButton("📍\nRoutes") { showRoutes() })
@@ -89,19 +104,23 @@ class MainActivity : Activity() {
             textSize = 12f
             gravity = Gravity.CENTER
             setTextColor(green)
-            setPadding(6, 6, 6, 6)
+            setPadding(8, 8, 8, 8)
             setOnClickListener { action() }
             layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
         }
     }
 
-    private fun clear() = content.removeAllViews()
+    private fun clear() {
+        content.removeAllViews()
+        scrollView.post { scrollView.scrollTo(0, 0) }
+    }
 
     private fun imageView(resId: Int, height: Int): ImageView {
         return ImageView(this).apply {
             setImageResource(resId)
             adjustViewBounds = true
             scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(0, 8, 0, 8)
             layoutParams = LinearLayout.LayoutParams(-1, height)
         }
     }
@@ -109,17 +128,24 @@ class MainActivity : Activity() {
     private fun card(): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(18, 16, 18, 16)
+            setPadding(20, 18, 20, 18)
             setBackgroundColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                setMargins(0, 8, 0, 12)
+            }
         }
     }
 
     private fun greenButton(text: String, action: () -> Unit): Button {
         return Button(this).apply {
             this.text = text
+            textSize = 15f
             setTextColor(Color.WHITE)
             setBackgroundColor(green)
             setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+                setMargins(0, 8, 0, 8)
+            }
         }
     }
 
@@ -128,68 +154,56 @@ class MainActivity : Activity() {
 
         content.addView(TextView(this).apply {
             text = "DriverMate PH"
-            textSize = 24f
+            textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
             setTypeface(null, 1)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
         content.addView(TextView(this).apply {
             text = "Smart booking alerts for drivers"
-            textSize = 13f
+            textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
-        content.addView(imageView(R.drawable.hero_banner, 230))
+        content.addView(imageView(R.drawable.hero_banner, 280))
 
         content.addView(TextView(this).apply {
             text = "Your Rides,\nYour Way\nAnytime,\nAnywhere!"
-            textSize = 25f
+            textSize = 28f
             setTextColor(dark)
             setTypeface(null, 1)
-            setPadding(0, 10, 0, 12)
+            setPadding(0, 8, 0, 14)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
         addDropdownCategory(
             R.drawable.package_truck,
             "Send Package",
             "Deliver packages safely and quickly.",
-            listOf(
-                "Add package route",
-                "Suggested Cavite package routes",
-                "Test package voice",
-                "Open Waze"
-            )
+            listOf("Add package route", "Suggested Cavite package routes", "Test package voice", "Open Waze")
         )
 
         addDropdownCategory(
             R.drawable.city_taxi,
             "Book Ride",
             "Quick rides within Cavite and Manila.",
-            listOf(
-                "Search Cavite routes",
-                "Search Manila-Cavite routes",
-                "Save preferred ride route",
-                "Test ride voice"
-            )
+            listOf("Search Cavite routes", "Search Manila-Cavite routes", "Save preferred ride route", "Test ride voice")
         )
 
         addDropdownCategory(
             R.drawable.intercity_car,
             "Book Intercity Ride",
             "Cavite to Manila route alerts.",
-            listOf(
-                "Long-distance route suggestions",
-                "Cavite to Manila routes",
-                "Manila to Cavite routes",
-                "Auto-open Waze setting"
-            )
+            listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
         )
 
         content.addView(TextView(this).apply {
             text = "Preferred Route Preview"
-            textSize = 15f
+            textSize = 16f
             setTextColor(dark)
             setTypeface(null, 1)
             setPadding(0, 14, 0, 6)
@@ -200,7 +214,8 @@ class MainActivity : Activity() {
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 12, 0, 0)
+            setPadding(0, 8, 0, 24)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         row.addView(Switch(this).apply {
@@ -230,12 +245,13 @@ class MainActivity : Activity() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         header.addView(ImageView(this).apply {
             setImageResource(imageRes)
             scaleType = ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(95, 95))
+        }, LinearLayout.LayoutParams(110, 110))
 
         header.addView(TextView(this).apply {
             text = "$title\n$desc"
@@ -257,6 +273,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             setPadding(0, 12, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         options.forEach { option ->
@@ -299,23 +316,26 @@ class MainActivity : Activity() {
 
         content.addView(TextView(this).apply {
             text = "Preferred Routes"
-            textSize = 24f
+            textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
             setTypeface(null, 1)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
         val search = EditText(this).apply {
             hint = "Search routes..."
             inputType = InputType.TYPE_CLASS_TEXT
             setSingleLine(true)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         content.addView(search)
 
         val listBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, 12, 0, 0)
+            setPadding(0, 12, 0, 24)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         }
 
         content.addView(listBox)
@@ -325,7 +345,7 @@ class MainActivity : Activity() {
 
             val routes = generateAllRoutes()
                 .filter { it.route.contains(query, true) }
-                .take(80)
+                .take(100)
 
             routes.forEach { route ->
                 val row = routeCard(route, isSaved(route.route))
@@ -352,10 +372,11 @@ class MainActivity : Activity() {
 
         content.addView(TextView(this).apply {
             text = "Create Route"
-            textSize = 24f
+            textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(dark)
             setTypeface(null, 1)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
 
         val from = Spinner(this)
@@ -389,12 +410,23 @@ class MainActivity : Activity() {
 
     private fun showAlertDemo() {
         clear()
-        content.addView(imageView(R.drawable.hero_banner, 220))
+        content.addView(imageView(R.drawable.hero_banner, 280))
         content.addView(routeCard(RouteData("Tanza to Imus", "200", "18"), true))
+        content.addView(greenButton("Test Voice Alert") { speakTest() })
+        content.addView(greenButton("Open Waze") { openWaze("Imus, Cavite") })
     }
 
     private fun showSettings() {
         clear()
+
+        content.addView(TextView(this).apply {
+            text = "Settings"
+            textSize = 26f
+            gravity = Gravity.CENTER
+            setTextColor(dark)
+            setTypeface(null, 1)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
+        })
 
         content.addView(greenButton("Notification Access") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -409,10 +441,11 @@ class MainActivity : Activity() {
         })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.2.4\nDriverMate PH"
+            text = "\nVersion 1.2.5\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
         })
     }
 
@@ -508,7 +541,12 @@ class MainActivity : Activity() {
         try {
             startActivity(intent)
         } catch (e: Exception) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")))
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")
+                )
+            )
         }
     }
 
