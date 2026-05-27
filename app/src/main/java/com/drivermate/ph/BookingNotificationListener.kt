@@ -66,6 +66,7 @@ class BookingNotificationListener : NotificationListenerService() {
         initTts()
 
         val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
+
         val voiceEnabled = prefs.getBoolean("voice_enabled", true)
         val speakAllRoutes = prefs.getBoolean("speak_all_routes", false)
         val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
@@ -75,16 +76,15 @@ class BookingNotificationListener : NotificationListenerService() {
 
         val appPackage = sbn.packageName.lowercase()
 
-        val allowedApps = listOf(
-            "lalamove",
-            "transportify",
-            "grab",
-            "moveit",
-            "angkas",
-            "joyride"
-        )
+        val appAllowed = when {
+            appPackage.contains("lalamove") -> prefs.getBoolean("enable_lalamove", true)
+            appPackage.contains("grab") -> prefs.getBoolean("enable_grab", true)
+            appPackage.contains("transportify") -> prefs.getBoolean("enable_transportify", true)
+            appPackage.contains("moveit") -> prefs.getBoolean("enable_moveit", true)
+            else -> false
+        }
 
-        if (allowedApps.none { appPackage.contains(it) }) return
+        if (!appAllowed) return
 
         val extras = sbn.notification.extras
 
