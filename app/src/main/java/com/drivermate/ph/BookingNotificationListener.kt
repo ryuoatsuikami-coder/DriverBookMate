@@ -67,6 +67,7 @@ class BookingNotificationListener : NotificationListenerService() {
 
         val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
         val voiceEnabled = prefs.getBoolean("voice_enabled", true)
+        val speakAllRoutes = prefs.getBoolean("speak_all_routes", false)
         val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
         val firstPriorityRoute = prefs.getString("first_priority_route", "") ?: ""
 
@@ -122,9 +123,9 @@ class BookingNotificationListener : NotificationListenerService() {
                 routePartsMatch(fullText, it.route)
         }
 
-        if (matchedRoute == null) return
+        if (!speakAllRoutes && matchedRoute == null) return
 
-        val finalRoute = matchedRoute.route
+        val finalRoute = matchedRoute?.route ?: detectedRoute
 
         val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
         val cleanDistance = if (distance == "not detected") "not detected" else "$distance kilometers"
@@ -133,9 +134,11 @@ class BookingNotificationListener : NotificationListenerService() {
 
         speakNow(message)
 
-        handler.postDelayed({
-            openApp()
-        }, 3500)
+        if (matchedRoute != null) {
+            handler.postDelayed({
+                openApp()
+            }, 3500)
+        }
 
         val isManualFirstPriority =
             firstPriorityRoute.isNotBlank() && finalRoute.equals(firstPriorityRoute, true)
@@ -286,7 +289,7 @@ class BookingNotificationListener : NotificationListenerService() {
 
     private fun openWaze(route: String) {
         val destination = extractDestination(route)
-        if (destination.isBlank()) return
+        if (destination.isBlank() || destination == "Route not detected") return
 
         val encodedDestination = Uri.encode(destination)
         val wazeUri = Uri.parse("waze://?q=$encodedDestination&navigate=yes")
