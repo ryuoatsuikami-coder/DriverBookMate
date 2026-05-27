@@ -34,9 +34,9 @@ class MainActivity : Activity() {
 
     private val cavitePlaces = listOf(
         "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
-        "Dasmarinas", "General Trias", "Imus", "Kawit", "Naic",
-        "Noveleta", "Rosario", "Silang", "Tagaytay", "Tanza",
-        "Trece Martires"
+        "Dasmarinas", "General Trias", "Imus", "Indang", "Kawit",
+        "Naic", "Noveleta", "Rosario", "Silang", "Tagaytay",
+        "Tanza", "Ternate", "Trece Martires"
     )
 
     private val manilaPlaces = listOf(
@@ -45,13 +45,53 @@ class MainActivity : Activity() {
     )
 
     private val hiddenIntercityAreas = listOf(
-        "General Manila",
-        "General Bulacan",
-        "General Pampanga",
-        "General Cavite",
-        "General Laguna",
-        "General Batangas",
-        "General Quezon"
+        "General Manila", "General Bulacan", "General Pampanga",
+        "General Cavite", "General Laguna", "General Batangas", "General Quezon",
+
+        "Caloocan", "Malabon", "Mandaluyong", "Marikina", "Navotas",
+        "San Juan", "Valenzuela", "Pateros",
+
+        "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan",
+        "Bustos", "Calumpit", "Dona Remedios Trinidad", "Guiguinto",
+        "Hagonoy", "Malolos", "Marilao", "Meycauayan", "Norzagaray",
+        "Obando", "Pandi", "Paombong", "Plaridel", "Pulilan",
+        "San Ildefonso", "San Jose del Monte", "San Miguel",
+        "San Rafael", "Santa Maria",
+
+        "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba",
+        "Floridablanca", "Guagua", "Lubao", "Mabalacat", "Macabebe",
+        "Magalang", "Masantol", "Mexico", "Minalin", "Porac",
+        "San Fernando Pampanga", "San Luis", "San Simon",
+        "Santa Ana", "Santa Rita", "Santo Tomas", "Sasmuan",
+
+        "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba",
+        "Calauan", "Cavinti", "Famy", "Kalayaan", "Liliw",
+        "Los Banos", "Luisiana", "Lumban", "Mabitac", "Magdalena",
+        "Majayjay", "Nagcarlan", "Paete", "Pagsanjan", "Pakil",
+        "Pangil", "Pila", "Rizal Laguna", "San Pablo", "San Pedro",
+        "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
+        "Siniloan", "Victoria",
+
+        "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City",
+        "Bauan", "Calaca", "Calatagan", "Cuenca", "Ibaan",
+        "Laurel", "Lemery", "Lian", "Lipa", "Lobo", "Mabini",
+        "Malvar", "Mataasnakahoy", "Nasugbu", "Padre Garcia",
+        "Rosario Batangas", "San Jose Batangas", "San Juan Batangas",
+        "San Luis Batangas", "San Nicolas", "San Pascual",
+        "Santa Teresita", "Santo Tomas Batangas", "Taal", "Talisay Batangas",
+        "Tanauan", "Taysan", "Tingloy", "Tuy",
+
+        "Agdangan", "Alabat", "Atimonan", "Buenavista Quezon",
+        "Burdeos", "Calauag", "Candelaria Quezon", "Catanauan",
+        "Dolores Quezon", "General Luna Quezon", "General Nakar",
+        "Guinayangan", "Gumaca", "Infanta Quezon", "Jomalig",
+        "Lopez", "Lucban", "Lucena", "Macalelon", "Mauban",
+        "Mulanay", "Padre Burgos Quezon", "Pagbilao", "Panukulan",
+        "Patnanungan", "Perez", "Pitogo Quezon", "Plaridel Quezon",
+        "Polillo", "Quezon Quezon", "Real Quezon", "Sampaloc Quezon",
+        "San Andres Quezon", "San Antonio Quezon", "San Francisco Quezon",
+        "San Narciso Quezon", "Sariaya", "Tagkawayan", "Tayabas",
+        "Tiaong", "Unisan"
     )
 
     private val allPlaces = cavitePlaces + manilaPlaces + hiddenIntercityAreas
@@ -62,7 +102,10 @@ class MainActivity : Activity() {
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 val result = tts?.setLanguage(Locale("en", "PH"))
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                if (
+                    result == TextToSpeech.LANG_MISSING_DATA ||
+                    result == TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
                     tts?.language = Locale.US
                 }
                 tts?.setSpeechRate(0.88f)
@@ -128,7 +171,7 @@ class MainActivity : Activity() {
         addCategoryCard(
             R.drawable.intercity_car,
             "Book Intercity Ride",
-            "Cavite, Manila, and hidden general area route alerts.",
+            "Cavite, Manila, and hidden intercity route alerts.",
             listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
         )
 
@@ -140,7 +183,6 @@ class MainActivity : Activity() {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(4), 0, dp(4))
         }
 
         top.addView(TextView(this).apply {
@@ -150,24 +192,12 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
 
-        top.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        top.addView(TextView(this).apply {
+            text = "DriverMate PH"
+            textSize = 28f
             gravity = Gravity.CENTER
-
-            addView(TextView(this@MainActivity).apply {
-                text = "DriverMate PH"
-                textSize = 28f
-                gravity = Gravity.CENTER
-                setTextColor(green)
-                setTypeface(null, Typeface.BOLD)
-            })
-
-            addView(TextView(this@MainActivity).apply {
-                text = "Smart booking alerts for preferred routes"
-                textSize = 14f
-                gravity = Gravity.CENTER
-                setTextColor(dark)
-            })
+            setTextColor(green)
+            setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
         top.addView(TextView(this).apply {
@@ -285,9 +315,7 @@ class MainActivity : Activity() {
 
     private fun addPreferredRoutesSection() {
         val card = whiteCard()
-
         val saved = getSavedRoutes()
-        val first = saved.firstOrNull() ?: RouteData("No preferred route saved", "0", "manual only")
 
         card.addView(TextView(this).apply {
             text = "Preferred Route Preview"
@@ -297,7 +325,7 @@ class MainActivity : Activity() {
             setPadding(dp(4), 0, 0, dp(8))
         })
 
-        card.addView(firstPriorityCard(first))
+        card.addView(firstPriorityCard())
 
         card.addView(greenButton("Manual Add Preferred Route") {
             showCreateRoute()
@@ -340,51 +368,58 @@ class MainActivity : Activity() {
 
         card.addView(dropdownTitle)
         card.addView(dropdownBox)
-
         content.addView(card)
     }
 
-    private fun firstPriorityCard(route: RouteData): LinearLayout {
+    private fun firstPriorityCard(): LinearLayout {
+        val selectedFirstPriority = getFirstPriorityRoute()
+        val displayRoute = if (selectedFirstPriority.isBlank()) {
+            "No first priority route selected"
+        } else {
+            selectedFirstPriority
+        }
+
         val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(12), dp(10), dp(12), dp(10))
             setBackgroundColor(lightGreen)
         }
 
         row.addView(TextView(this).apply {
-            text = "🏅\n1"
-            textSize = 24f
+            text = "🏅 MANUAL FIRST PRIORITY"
+            textSize = 16f
             gravity = Gravity.CENTER
-            setTextColor(green)
-        }, LinearLayout.LayoutParams(dp(62), -2))
-
-        row.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-
-            addView(TextView(this@MainActivity).apply {
-                text = route.route
-                textSize = 18f
-                setTextColor(dark)
-                setTypeface(null, Typeface.BOLD)
-            })
-
-            addView(TextView(this@MainActivity).apply {
-                text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
-                textSize = 15f
-                setTextColor(dark)
-            })
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-
-        row.addView(TextView(this).apply {
-            text = "FIRST PRIORITY"
-            textSize = 12f
             setTextColor(green)
             setTypeface(null, Typeface.BOLD)
+        })
+
+        row.addView(TextView(this).apply {
+            text = displayRoute
+            textSize = 18f
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.rgb(210, 245, 220))
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-        }, LinearLayout.LayoutParams(-2, -2))
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, dp(8), 0, dp(8))
+        })
+
+        row.addView(TextView(this).apply {
+            text = "Only this manually selected route can auto-open Waze."
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(gray)
+        })
+
+        row.addView(Button(this).apply {
+            text = "CLEAR FIRST PRIORITY"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(orange)
+            setOnClickListener {
+                clearFirstPriorityRoute()
+                Toast.makeText(this@MainActivity, "First priority cleared", Toast.LENGTH_SHORT).show()
+                showHome()
+            }
+        })
 
         return row
     }
@@ -404,21 +439,11 @@ class MainActivity : Activity() {
             setTextColor(green)
         }, LinearLayout.LayoutParams(dp(58), dp(58)))
 
-        row.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-
-            addView(TextView(this@MainActivity).apply {
-                text = "Voice Message"
-                textSize = 12f
-                setTextColor(dark)
-                setTypeface(null, Typeface.BOLD)
-            })
-
-            addView(TextView(this@MainActivity).apply {
-                text = "Voice alerts for saved preferred routes"
-                textSize = 11f
-                setTextColor(gray)
-            })
+        row.addView(TextView(this).apply {
+            text = "Voice Message"
+            textSize = 12f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
         row.addView(Switch(this).apply {
@@ -647,7 +672,7 @@ class MainActivity : Activity() {
         clear()
         addTopBar()
         addHeroBanner()
-        content.addView(firstPriorityCard(RouteData("Tanza to Imus", "200", "manual only")))
+        content.addView(firstPriorityCard())
         content.addView(greenButton("Test Voice Alert") { speakTest() })
         content.addView(greenButton("Open Waze") { openWaze("Imus, Cavite") })
     }
@@ -671,7 +696,7 @@ class MainActivity : Activity() {
         content.addView(greenButton("Manage Routes") { showRoutes() })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.3.5\nDriverMate PH"
+            text = "\nVersion 1.3.7\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
@@ -693,42 +718,65 @@ class MainActivity : Activity() {
 
     private fun routeCard(route: RouteData): LinearLayout {
         val c = whiteCard()
+        val firstPriority = getFirstPriorityRoute()
+        val isFirstPriority = firstPriority.equals(route.route, true)
 
         val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            orientation = LinearLayout.VERTICAL
         }
 
-        row.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        row.addView(TextView(this).apply {
+            text = if (isFirstPriority) "🏅 ${route.route}" else "📍 ${route.route}"
+            textSize = 16f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        })
 
-            addView(TextView(this@MainActivity).apply {
-                text = "📍 ${route.route}"
-                textSize = 16f
-                setTextColor(dark)
-                setTypeface(null, Typeface.BOLD)
-            })
+        row.addView(TextView(this).apply {
+            text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
+            textSize = 14f
+            setTextColor(green)
+        })
 
-            addView(TextView(this@MainActivity).apply {
-                text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
-                textSize = 14f
-                setTextColor(green)
-            })
+        val buttons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(8), 0, 0)
+        }
+
+        buttons.addView(Button(this).apply {
+            text = if (isFirstPriority) "FIRST PRIORITY" else "SET FIRST"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(if (isFirstPriority) gray else green)
+            isEnabled = !isFirstPriority
+            setOnClickListener {
+                setFirstPriorityRoute(route.route)
+                Toast.makeText(this@MainActivity, "Set as first priority", Toast.LENGTH_SHORT).show()
+                showHome()
+            }
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        row.addView(Button(this).apply {
+        buttons.addView(Button(this).apply {
             text = "REMOVE"
             textSize = 11f
             setTextColor(Color.WHITE)
             setBackgroundColor(orange)
             setOnClickListener {
                 removeSavedRoute(route.route)
+
+                if (getFirstPriorityRoute().equals(route.route, true)) {
+                    clearFirstPriorityRoute()
+                }
+
                 Toast.makeText(this@MainActivity, "Preferred route removed", Toast.LENGTH_SHORT).show()
                 showHome()
             }
-        }, LinearLayout.LayoutParams(dp(95), -2))
+        }, LinearLayout.LayoutParams(0, -2, 1f))
 
+        row.addView(buttons)
         c.addView(row)
+
         return c
     }
 
@@ -753,7 +801,7 @@ class MainActivity : Activity() {
 
     private fun generateAllRoutes(): List<RouteData> {
         val list = mutableListOf<RouteData>()
-        val searchablePlaces = cavitePlaces + manilaPlaces + hiddenIntercityAreas
+        val searchablePlaces = allPlaces.distinct()
 
         for (from in searchablePlaces) {
             for (to in searchablePlaces) {
@@ -776,6 +824,7 @@ class MainActivity : Activity() {
         val base = abs(a - b) + 8
         val intercity = hiddenIntercityAreas.contains(from) || hiddenIntercityAreas.contains(to)
         val manilaRoute = manilaPlaces.contains(from) || manilaPlaces.contains(to)
+
         return when {
             intercity -> base + 45
             manilaRoute -> base + 18
@@ -822,6 +871,18 @@ class MainActivity : Activity() {
 
     private fun isSaved(route: String): Boolean {
         return getSavedRoutes().any { it.route.equals(route, true) }
+    }
+
+    private fun getFirstPriorityRoute(): String {
+        return prefs.getString("first_priority_route", "") ?: ""
+    }
+
+    private fun setFirstPriorityRoute(route: String) {
+        prefs.edit().putString("first_priority_route", route).apply()
+    }
+
+    private fun clearFirstPriorityRoute() {
+        prefs.edit().remove("first_priority_route").apply()
     }
 
     private fun openWaze(destination: String) {
