@@ -281,7 +281,7 @@ class MainActivity : Activity() {
         val first = saved.firstOrNull() ?: RouteData("No preferred route saved", "0", "manual only")
 
         val title = TextView(this).apply {
-            text = "Preferred Route Preview⌄"
+            text = "Preferred Route Preview"
             textSize = 18f
             setTextColor(green)
             setTypeface(null, Typeface.BOLD)
@@ -296,7 +296,7 @@ class MainActivity : Activity() {
         })
 
         val dropdownTitle = TextView(this).apply {
-            text = "All other preferred routes      ⌄"
+            text = "All saved preferred routes      ⌄"
             textSize = 15f
             setTextColor(dark)
             setPadding(dp(12), dp(10), dp(12), dp(10))
@@ -308,17 +308,15 @@ class MainActivity : Activity() {
             visibility = View.GONE
         }
 
-        val others = saved.drop(1)
-
-        if (others.isEmpty()) {
+        if (saved.isEmpty()) {
             dropdownBox.addView(TextView(this).apply {
-                text = "No other preferred routes yet."
+                text = "No preferred routes yet."
                 textSize = 14f
                 setTextColor(gray)
                 setPadding(dp(12), dp(8), dp(12), dp(8))
             })
         } else {
-            others.forEach {
+            saved.forEach {
                 dropdownBox.addView(routeCard(it, true))
             }
         }
@@ -326,9 +324,9 @@ class MainActivity : Activity() {
         dropdownTitle.setOnClickListener {
             dropdownBox.visibility = if (dropdownBox.visibility == View.VISIBLE) View.GONE else View.VISIBLE
             dropdownTitle.text = if (dropdownBox.visibility == View.VISIBLE) {
-                "All other preferred routes      ⌃"
+                "All saved preferred routes      ⌃"
             } else {
-                "All other preferred routes      ⌄"
+                "All saved preferred routes      ⌄"
             }
         }
 
@@ -409,7 +407,7 @@ class MainActivity : Activity() {
             })
 
             addView(TextView(this@MainActivity).apply {
-                text = "Voice alerts for booking messages"
+                text = "Voice alerts for saved preferred routes"
                 textSize = 11f
                 setTextColor(gray)
             })
@@ -445,7 +443,7 @@ class MainActivity : Activity() {
             })
 
             addView(TextView(this@MainActivity).apply {
-                text = "Open Waze on first preferred booking."
+                text = "Only first preferred route opens Waze."
                 textSize = 11f
                 setTextColor(gray)
             })
@@ -697,7 +695,7 @@ class MainActivity : Activity() {
         })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.3.0\nDriverMate PH"
+            text = "\nVersion 1.3.2\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
@@ -719,21 +717,42 @@ class MainActivity : Activity() {
 
     private fun routeCard(route: RouteData, preferred: Boolean): LinearLayout {
         val c = whiteCard()
-        val badge = if (preferred) "Preferred" else "Tap to Add"
 
-        c.addView(TextView(this).apply {
-            text = "📍 ${route.route}        $badge"
-            textSize = 16f
-            setTextColor(dark)
-            setTypeface(null, Typeface.BOLD)
-        })
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
 
-        c.addView(TextView(this).apply {
-            text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
-            textSize = 14f
-            setTextColor(if (preferred) green else orange)
-        })
+        row.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
 
+            addView(TextView(this@MainActivity).apply {
+                text = "📍 ${route.route}"
+                textSize = 16f
+                setTextColor(dark)
+                setTypeface(null, Typeface.BOLD)
+            })
+
+            addView(TextView(this@MainActivity).apply {
+                text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
+                textSize = 14f
+                setTextColor(green)
+            })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        row.addView(Button(this).apply {
+            text = "REMOVE"
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(orange)
+            setOnClickListener {
+                removeSavedRoute(route.route)
+                Toast.makeText(this@MainActivity, "Preferred route removed", Toast.LENGTH_SHORT).show()
+                showHome()
+            }
+        }, LinearLayout.LayoutParams(dp(95), -2))
+
+        c.addView(row)
         return c
     }
 
@@ -781,6 +800,19 @@ class MainActivity : Activity() {
         if (current.lowercase().contains(route.lowercase())) return
 
         val updated = if (current.isBlank()) newItem else "$current|$newItem"
+        prefs.edit().putString("saved_full_routes", updated).apply()
+    }
+
+    private fun removeSavedRoute(route: String) {
+        val current = prefs.getString("saved_full_routes", "") ?: ""
+
+        val updated = current.split("|")
+            .filter { item ->
+                val parts = item.split("~")
+                parts.isNotEmpty() && !parts[0].equals(route, true)
+            }
+            .joinToString("|")
+
         prefs.edit().putString("saved_full_routes", updated).apply()
     }
 
