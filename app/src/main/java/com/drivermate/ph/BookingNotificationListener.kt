@@ -9,15 +9,16 @@ import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.speech.tts.TextToSpeech
-import android.widget.Toast
 import java.util.Locale
-import kotlin.math.abs
 
 class BookingNotificationListener : NotificationListenerService() {
 
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private val handler = Handler(Looper.getMainLooper())
+
+    private var lastSpokenText = ""
+    private var lastSpokenTime = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -27,9 +28,10 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         initTts()
+
         handler.postDelayed({
             speakNow("DriverMate PH notification reader is active.")
-        }, 800)
+        }, 1000)
     }
 
     private fun initTts() {
@@ -37,10 +39,12 @@ class BookingNotificationListener : NotificationListenerService() {
 
         tts = TextToSpeech(applicationContext) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                ttsReady = true
-
                 val langResult = tts?.setLanguage(Locale("en", "PH"))
-                if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+
+                if (
+                    langResult == TextToSpeech.LANG_MISSING_DATA ||
+                    langResult == TextToSpeech.LANG_NOT_SUPPORTED
+                ) {
                     tts?.language = Locale.US
                 }
 
@@ -53,6 +57,8 @@ class BookingNotificationListener : NotificationListenerService() {
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )
+
+                ttsReady = true
             }
         }
     }
@@ -91,6 +97,12 @@ class BookingNotificationListener : NotificationListenerService() {
 
         if (fullText.isBlank()) return
 
+        val now = System.currentTimeMillis()
+        if (fullText == lastSpokenText && now - lastSpokenTime < 8000) return
+
+        lastSpokenText = fullText
+        lastSpokenTime = now
+
         val bookingType = detectBookingType(fullText)
         val route = detectRoute(fullText)
         val fare = detectFare(fullText)
@@ -100,7 +112,7 @@ class BookingNotificationListener : NotificationListenerService() {
         val preferredOnly = prefs.getBoolean("preferred_only", false)
         val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
 
-        val preferred = isPreferredRoute(route, fare, distance)
+        val preferred = isPreferredRoute(route)
 
         if (preferredOnly && !preferred) return
 
@@ -114,12 +126,12 @@ class BookingNotificationListener : NotificationListenerService() {
         if (preferred) {
             handler.postDelayed({
                 openApp()
-            }, 3500)
+            }, 4500)
 
             if (autoOpenWaze && route != "Route not detected") {
                 handler.postDelayed({
                     openWaze(route)
-                }, 6000)
+                }, 7500)
             }
         }
     }
@@ -128,15 +140,37 @@ class BookingNotificationListener : NotificationListenerService() {
         initTts()
 
         handler.postDelayed({
-            if (ttsReady) {
+            if (ttsReady && tts != null) {
                 tts?.stop()
-                tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "booking_alert_${System.currentTimeMillis()}")
+                tts?.speak(
+                    message,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "booking_alert_${System.currentTimeMillis()}"
+                )
             } else {
-                handler.postDelayed({
-                    tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "booking_alert_retry")
-                }, 1500)
+                retrySpeak(message, 1)
             }
-        }, 300)
+        }, 500)
+    }
+
+    private fun retrySpeak(message: String, attempt: Int) {
+        if (attempt > 3) return
+
+        handler.postDelayed({
+            if (ttsReady && tts != null) {
+                tts?.stop()
+                tts?.speak(
+                    message,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "booking_alert_retry_${System.currentTimeMillis()}"
+                )
+            } else {
+                initTts()
+                retrySpeak(message, attempt + 1)
+            }
+        }, 1200)
     }
 
     private fun detectBookingType(text: String): String {
@@ -165,7 +199,8 @@ class BookingNotificationListener : NotificationListenerService() {
                 val from = parts[0].trim()
                 val to = parts[1].trim()
 
-                if (text.lowercase().contains(from.lowercase()) &&
+                if (
+                    text.lowercase().contains(from.lowercase()) &&
                     text.lowercase().contains(to.lowercase())
                 ) {
                     return "$from to $to"
@@ -230,7 +265,7 @@ class BookingNotificationListener : NotificationListenerService() {
         return "not detected"
     }
 
-    private fun isPreferredRoute(route: String, fare: String, distance: String): Boolean {
+    private fun isPreferredRoute(route: String): Boolean {
         val saved = getSavedRoutes()
         if (saved.isEmpty()) return true
 
@@ -256,6 +291,7 @@ class BookingNotificationListener : NotificationListenerService() {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
+
         startActivity(intent)
     }
 
@@ -298,6 +334,7 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
+        tts = null
         super.onDestroy()
     }
 }
