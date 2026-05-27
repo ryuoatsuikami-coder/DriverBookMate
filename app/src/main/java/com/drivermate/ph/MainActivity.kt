@@ -45,9 +45,6 @@ class MainActivity : Activity() {
     )
 
     private val hiddenIntercityAreas = listOf(
-        "General Manila", "General Bulacan", "General Pampanga",
-        "General Cavite", "General Laguna", "General Batangas", "General Quezon",
-
         "Caloocan", "Malabon", "Mandaluyong", "Marikina", "Navotas",
         "San Juan", "Valenzuela", "Pateros",
 
@@ -94,7 +91,7 @@ class MainActivity : Activity() {
         "Tiaong", "Unisan"
     )
 
-    private val allPlaces = cavitePlaces + manilaPlaces + hiddenIntercityAreas
+    private val allPlaces = (cavitePlaces + manilaPlaces + hiddenIntercityAreas).distinct().sorted()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -171,7 +168,7 @@ class MainActivity : Activity() {
         addCategoryCard(
             R.drawable.intercity_car,
             "Book Intercity Ride",
-            "Cavite, Manila, and hidden intercity route alerts.",
+            "Cavite, Manila, and intercity route alerts.",
             listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
         )
 
@@ -290,8 +287,8 @@ class MainActivity : Activity() {
                 setOnClickListener {
                     when {
                         option.contains("Search", true) ||
-                        option.contains("suggested", true) ||
-                        option.contains("routes", true) -> showRoutes()
+                            option.contains("suggested", true) ||
+                            option.contains("routes", true) -> showRoutes()
 
                         option.contains("Add", true) -> showCreateRoute()
 
@@ -427,46 +424,99 @@ class MainActivity : Activity() {
     private fun addControlSection() {
         val card = whiteCard()
 
-        val row = LinearLayout(this).apply {
+        val voiceRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        row.addView(TextView(this).apply {
+        voiceRow.addView(TextView(this).apply {
             text = "🔊"
             textSize = 34f
             gravity = Gravity.CENTER
             setTextColor(green)
-        }, LinearLayout.LayoutParams(dp(58), dp(58)))
+        }, LinearLayout.LayoutParams(dp(52), dp(58)))
 
-        row.addView(TextView(this).apply {
+        voiceRow.addView(TextView(this).apply {
             text = "Voice Message"
             textSize = 12f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        row.addView(Switch(this).apply {
+        voiceRow.addView(Switch(this).apply {
             isChecked = prefs.getBoolean("voice_enabled", true)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("voice_enabled", checked).apply()
+                Toast.makeText(
+                    this@MainActivity,
+                    if (checked) "Voice Message ON" else "Voice Message OFF",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         })
 
-        row.addView(ImageView(this).apply {
+        card.addView(voiceRow)
+
+        val speakAllRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(4), 0, dp(4))
+        }
+
+        speakAllRow.addView(TextView(this).apply {
+            text = "🗣️"
+            textSize = 30f
+            gravity = Gravity.CENTER
+            setTextColor(green)
+        }, LinearLayout.LayoutParams(dp(52), dp(58)))
+
+        speakAllRow.addView(TextView(this).apply {
+            text = "Speak All Routes"
+            textSize = 12f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        speakAllRow.addView(Switch(this).apply {
+            isChecked = prefs.getBoolean("speak_all_routes", false)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean("speak_all_routes", checked).apply()
+                Toast.makeText(
+                    this@MainActivity,
+                    if (checked) "Speaking all routes" else "Preferred routes only",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
+
+        card.addView(speakAllRow)
+
+        val wazeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        wazeRow.addView(ImageView(this).apply {
             setImageResource(R.drawable.waze_icon)
             scaleType = ImageView.ScaleType.FIT_CENTER
             setOnClickListener { openWaze("Imus, Cavite") }
         }, LinearLayout.LayoutParams(dp(76), dp(76)))
 
-        row.addView(Switch(this).apply {
+        wazeRow.addView(TextView(this).apply {
+            text = "Auto Waze"
+            textSize = 12f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        wazeRow.addView(Switch(this).apply {
             isChecked = prefs.getBoolean("auto_open_waze", true)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("auto_open_waze", checked).apply()
             }
         })
 
-        card.addView(row)
+        card.addView(wazeRow)
         content.addView(card)
     }
 
@@ -632,11 +682,73 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
         })
 
-        val from = Spinner(this)
-        from.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, allPlaces)
+        val selectedFrom = arrayOf("")
+        val selectedTo = arrayOf("")
 
-        val to = Spinner(this)
-        to.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, allPlaces)
+        val fromInput = EditText(this).apply {
+            hint = "Type pickup place e.g. Tanza"
+            inputType = InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+        }
+
+        val fromList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        val toInput = EditText(this).apply {
+            hint = "Type dropoff place e.g. Imus"
+            inputType = InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
+        }
+
+        val toList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        fun renderPlaceList(query: String, box: LinearLayout, input: EditText, target: Array<String>) {
+            box.removeAllViews()
+
+            val q = query.trim()
+            if (q.isBlank()) return
+
+            val results = allPlaces
+                .filter { it.startsWith(q, true) }
+                .take(12)
+
+            results.forEach { place ->
+                box.addView(TextView(this).apply {
+                    text = place
+                    textSize = 16f
+                    setTextColor(dark)
+                    setPadding(dp(12), dp(8), dp(12), dp(8))
+                    setBackgroundColor(Color.WHITE)
+                    setOnClickListener {
+                        target[0] = place
+                        input.setText(place)
+                        input.setSelection(input.text.length)
+                        box.removeAllViews()
+                    }
+                })
+            }
+        }
+
+        fromInput.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                selectedFrom[0] = s.toString()
+                renderPlaceList(s.toString(), fromList, fromInput, selectedFrom)
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        toInput.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                selectedTo[0] = s.toString()
+                renderPlaceList(s.toString(), toList, toInput, selectedTo)
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         val fare = EditText(this).apply {
             hint = "Minimum fare example: 200"
@@ -649,16 +761,31 @@ class MainActivity : Activity() {
         }
 
         content.addView(TextView(this).apply { text = "From" })
-        content.addView(from)
+        content.addView(fromInput)
+        content.addView(fromList)
 
         content.addView(TextView(this).apply { text = "To" })
-        content.addView(to)
+        content.addView(toInput)
+        content.addView(toList)
 
         content.addView(fare)
         content.addView(distance)
 
         content.addView(greenButton("Add Preferred Route") {
-            val route = "${from.selectedItem} to ${to.selectedItem}"
+            val fromValue = selectedFrom[0].trim()
+            val toValue = selectedTo[0].trim()
+
+            if (fromValue.isBlank() || toValue.isBlank()) {
+                Toast.makeText(this, "Please enter pickup and dropoff", Toast.LENGTH_SHORT).show()
+                return@greenButton
+            }
+
+            if (fromValue.equals(toValue, true)) {
+                Toast.makeText(this, "Pickup and dropoff cannot be the same", Toast.LENGTH_SHORT).show()
+                return@greenButton
+            }
+
+            val route = "$fromValue to $toValue"
             val fareValue = fare.text.toString().ifBlank { "0" }
             val distanceValue = distance.text.toString().ifBlank { "manual only" }
 
@@ -696,7 +823,7 @@ class MainActivity : Activity() {
         content.addView(greenButton("Manage Routes") { showRoutes() })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.3.7\nDriverMate PH"
+            text = "\nVersion 1.3.9\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
