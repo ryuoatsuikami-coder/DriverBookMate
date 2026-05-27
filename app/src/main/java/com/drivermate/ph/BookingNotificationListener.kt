@@ -106,7 +106,7 @@ class BookingNotificationListener : NotificationListenerService() {
         val bookingType = detectBookingType(fullText)
         val route = detectRoute(fullText)
         val fare = detectFare(fullText)
-        val distance = detectDistance(fullText, route)
+        val distance = detectDistanceFromNotification(fullText)
 
         val firstPreferredRoute = getSavedRoutes().firstOrNull()
         val isFirstPreferred = firstPreferredRoute != null && route.equals(firstPreferredRoute.route, true)
@@ -237,26 +237,18 @@ class BookingNotificationListener : NotificationListenerService() {
             if (match != null) return match.groupValues[1]
         }
 
-        val route = detectRoute(text)
-        getSavedRoutes().firstOrNull { it.route.equals(route, true) }?.let {
-            if (it.fare.isNotBlank()) return it.fare
-        }
-
         return "not detected"
     }
 
-    private fun detectDistance(text: String, route: String): String {
+    private fun detectDistanceFromNotification(text: String): String {
         val patterns = listOf(
+            Regex("""(?:distance|trip distance|route distance|total distance)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
             Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
         )
 
         for (pattern in patterns) {
             val match = pattern.find(text)
             if (match != null) return match.groupValues[1]
-        }
-
-        getSavedRoutes().firstOrNull { it.route.equals(route, true) }?.let {
-            if (it.distance.isNotBlank()) return it.distance
         }
 
         return "not detected"
