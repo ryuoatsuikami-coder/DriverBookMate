@@ -21,6 +21,47 @@ class MainActivity : Activity() {
     private val yellow = Color.rgb(255, 193, 7)
     private val dark = Color.rgb(24, 24, 24)
 
+    private val cavitePlaces = arrayOf(
+        "Tanza", "Imus", "Bacoor", "Dasmarinas", "General Trias",
+        "Cavite City", "Trece Martires", "Kawit", "Noveleta",
+        "Rosario", "Naic", "Silang", "Tagaytay"
+    )
+
+    private val manilaPlaces = arrayOf(
+        "Manila", "Pasay", "Makati", "BGC", "Taguig",
+        "Paranaque", "Las Pinas", "Alabang", "Quezon City"
+    )
+
+    private val suggestedRoutes = arrayOf(
+        "Tanza to Imus | Fare 200 | Distance 18 km",
+        "Imus to Tanza | Fare 200 | Distance 18 km",
+        "Tanza to Cavite City | Fare 250 | Distance 22 km",
+        "Cavite City to Tanza | Fare 250 | Distance 22 km",
+        "Tanza to Bacoor | Fare 250 | Distance 25 km",
+        "Bacoor to Tanza | Fare 250 | Distance 25 km",
+        "General Trias to Imus | Fare 180 | Distance 15 km",
+        "Imus to General Trias | Fare 180 | Distance 15 km",
+        "Dasmarinas to Bacoor | Fare 220 | Distance 20 km",
+        "Bacoor to Dasmarinas | Fare 220 | Distance 20 km",
+        "Naic to Tanza | Fare 180 | Distance 16 km",
+        "Tanza to Naic | Fare 180 | Distance 16 km",
+        "Trece Martires to Dasmarinas | Fare 200 | Distance 18 km",
+        "Dasmarinas to Trece Martires | Fare 200 | Distance 18 km",
+
+        "Tanza to Manila | Fare 500 | Distance 45 km",
+        "Manila to Tanza | Fare 500 | Distance 45 km",
+        "Imus to Manila | Fare 400 | Distance 32 km",
+        "Manila to Imus | Fare 400 | Distance 32 km",
+        "Bacoor to Pasay | Fare 300 | Distance 22 km",
+        "Pasay to Bacoor | Fare 300 | Distance 22 km",
+        "Dasmarinas to Makati | Fare 500 | Distance 40 km",
+        "Makati to Dasmarinas | Fare 500 | Distance 40 km",
+        "General Trias to BGC | Fare 550 | Distance 42 km",
+        "BGC to General Trias | Fare 550 | Distance 42 km",
+        "Cavite City to Manila | Fare 450 | Distance 35 km",
+        "Manila to Cavite City | Fare 450 | Distance 35 km"
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -65,6 +106,7 @@ class MainActivity : Activity() {
 
         tabRow.addView(makeTabButton("Home") { showHome() })
         tabRow.addView(makeTabButton("Add") { showAddOptions() })
+        tabRow.addView(makeTabButton("Suggest") { showSuggestedRoutes() })
         tabRow.addView(makeTabButton("Saved") { showSavedList() })
 
         root.addView(title)
@@ -79,7 +121,7 @@ class MainActivity : Activity() {
     private fun makeTabButton(label: String, action: () -> Unit): Button {
         return Button(this).apply {
             text = label
-            textSize = 12f
+            textSize = 11f
             setTextColor(dark)
             setBackgroundColor(yellow)
             setOnClickListener { action() }
@@ -151,60 +193,128 @@ class MainActivity : Activity() {
 
     private fun showAddOptions() {
         clearContent()
-        addTitle("Add Preferred Option")
+        addTitle("Create Route")
 
-        addLabel("Choose option type")
+        addLabel("From")
 
-        val options = arrayOf("Route", "Fare", "Distance")
-        val spinner = Spinner(this)
-        spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, options)
+        val fromSpinner = Spinner(this)
+        fromSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            cavitePlaces + manilaPlaces
+        )
 
-        addLabel("Enter value")
+        addLabel("To")
 
-        val input = EditText(this).apply {
-            hint = "Example: Tanza to Imus / 200 / 5"
+        val toSpinner = Spinner(this)
+        toSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            cavitePlaces + manilaPlaces
+        )
+
+        addLabel("Fare")
+
+        val fareInput = EditText(this).apply {
+            hint = "Example: 200"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+
+        addLabel("Distance in km")
+
+        val distanceInput = EditText(this).apply {
+            hint = "Example: 18"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
 
         val saveButton = Button(this).apply {
-            text = "Save to List"
+            text = "Save Route"
             setBackgroundColor(orange)
             setTextColor(Color.WHITE)
             setOnClickListener {
-                val type = spinner.selectedItem.toString()
-                val value = input.text.toString().trim()
+                val from = fromSpinner.selectedItem.toString()
+                val to = toSpinner.selectedItem.toString()
+                val fare = fareInput.text.toString().trim()
+                val distance = distanceInput.text.toString().trim()
 
-                if (value.isBlank()) {
-                    Toast.makeText(this@MainActivity, "Please enter a value", Toast.LENGTH_SHORT).show()
+                if (from == to) {
+                    Toast.makeText(this@MainActivity, "Choose different places", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
 
-                saveOption(type, value)
-                input.setText("")
-                Toast.makeText(this@MainActivity, "$type saved", Toast.LENGTH_SHORT).show()
+                saveRouteFareDistance(from, to, fare, distance)
+
+                Toast.makeText(this@MainActivity, "Route saved", Toast.LENGTH_SHORT).show()
+                showSavedList()
+            }
+        }
+
+        contentArea.addView(fromSpinner)
+        contentArea.addView(toSpinner)
+        contentArea.addView(fareInput)
+        contentArea.addView(distanceInput)
+        contentArea.addView(saveButton)
+    }
+
+    private fun showSuggestedRoutes() {
+        clearContent()
+        addTitle("Suggested Routes")
+
+        addLabel("Tap one suggested route to save automatically")
+
+        val spinner = Spinner(this)
+        spinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            suggestedRoutes
+        )
+
+        val addButton = Button(this).apply {
+            text = "Add Selected Route"
+            setBackgroundColor(orange)
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                val selected = spinner.selectedItem.toString()
+                saveSuggestedRoute(selected)
+                Toast.makeText(this@MainActivity, "Suggested route saved", Toast.LENGTH_SHORT).show()
                 showSavedList()
             }
         }
 
         contentArea.addView(spinner)
-        contentArea.addView(input)
-        contentArea.addView(saveButton)
+        contentArea.addView(addButton)
     }
 
-    private fun saveOption(type: String, value: String) {
-        val key = when (type) {
-            "Route" -> "saved_routes"
-            "Fare" -> "saved_fares"
-            "Distance" -> "saved_distances"
-            else -> "saved_routes"
-        }
+    private fun saveSuggestedRoute(selected: String) {
+        val parts = selected.split("|").map { it.trim() }
 
+        val route = parts.getOrNull(0)?.trim() ?: ""
+        val fare = parts.getOrNull(1)?.replace("Fare", "")?.trim() ?: ""
+        val distance = parts.getOrNull(2)?.replace("Distance", "")?.replace("km", "")?.trim() ?: ""
+
+        if (route.isNotBlank()) saveOption("saved_routes", route)
+        if (fare.isNotBlank()) saveOption("saved_fares", fare)
+        if (distance.isNotBlank()) saveOption("saved_distances", distance)
+    }
+
+    private fun saveRouteFareDistance(from: String, to: String, fare: String, distance: String) {
+        val route = "$from to $to"
+        saveOption("saved_routes", route)
+
+        if (fare.isNotBlank()) saveOption("saved_fares", fare)
+        if (distance.isNotBlank()) saveOption("saved_distances", distance)
+    }
+
+    private fun saveOption(key: String, value: String) {
         val current = prefs.getString(key, "") ?: ""
-        val updated = if (current.isBlank()) {
-            value
-        } else {
-            "$current|$value"
-        }
 
+        val alreadySaved = current.split("|")
+            .map { it.trim().lowercase() }
+            .contains(value.trim().lowercase())
+
+        if (alreadySaved) return
+
+        val updated = if (current.isBlank()) value else "$current|$value"
         prefs.edit().putString(key, updated).apply()
     }
 
