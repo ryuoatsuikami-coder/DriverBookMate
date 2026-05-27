@@ -42,21 +42,24 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
 
         val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
         val preferredOnly = prefs.getBoolean("preferred_only", false)
-        val keywords = prefs.getString("preferred_keywords", "") ?: ""
 
-        val isPreferred = keywords.split(",")
-            .map { it.trim().lowercase() }
-            .filter { it.isNotBlank() }
-            .any { raw.lowercase().contains(it) }
+        val savedRoutes = getSavedList("saved_routes")
+        val savedFares = getSavedList("saved_fares")
+        val savedDistances = getSavedList("saved_distances")
 
-        if (preferredOnly && !isPreferred) return
-
-        val bookingType = detectBookingType(raw)
+        val bookingName = detectBookingName(raw, title)
         val route = detectRoute(raw)
         val fare = detectFare(raw)
+        val distance = detectDistance(raw)
+
+        val routeMatch = savedRoutes.isEmpty() || savedRoutes.any { raw.lowercase().contains(it.lowercase()) }
+        val fareMatch = savedFares.isEmpty() || fareMatches(savedFares, fare)
+        val distanceMatch = savedDistances.isEmpty() || distanceMatches(savedDistances, distance)
+
+        if (preferredOnly && !(routeMatch && fareMatch && distanceMatch)) return
 
         val message = buildString {
-            append("$bookingType. ")
+            append("$bookingName. ")
 
             if (route.isNotBlank()) {
                 append("From $route. ")
@@ -67,20 +70,52 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
             }
         }.trim()
 
-        if (message.isNotBlank()) {
-            speak(message)
+        if (message.isNotBlank()) speak(message)
+    }
+
+    private fun getSavedList(key: String): List<String> {
+        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
+        val saved = prefs.getString(key, "") ?: ""
+        return saved.split("|").map { it.trim() }.filter { it.isNotBlank() }
+    }
+
+    private fun fareMatches(savedFares: List<String>, fare: String): Boolean {
+        val fareValue = fare.toDoubleOrNull() ?: return false
+
+        return savedFares.any {
+            val savedValue = it.toDoubleOrNull()
+            savedValue != null && fareValue >= savedValue
         }
     }
 
-    private fun detectBookingType(message: String): String {
-        val lower = message.lowercase()
-        return when {
-            lower.contains("priority") -> "Priority"
-            lower.contains("immediate") -> "Immediate"
-            lower.contains("regular") -> "Regular"
-            lower.contains("pooling") -> "Pooling"
-            else -> "Booking"
+    private fun distanceMatches(savedDistances: List<String>, distance: String): Boolean {
+        val distanceValue = distance.toDoubleOrNull() ?: return false
+
+        return savedDistances.any {
+            val savedValue = it.toDoubleOrNull()
+            savedValue != null && distanceValue <= savedValue
         }
+    }
+
+    private fun detectBookingName(message: String, title: String): String {
+        val lower = message.lowercase()
+
+        return when {
+            lower.contains("priority") -> "Priority booking"
+            lower.contains("immediate") -> "Immediate booking"
+            lower.contains("regular") -> "Regular booking"
+            lower.contains("pooling") -> "Pooling booking"
+            title.isNotBlank() -> cleanShort(title)
+            else -> "New booking"
+        }
+    }
+
+    private fun cleanShort(text: String): String {
+        return text
+            .replace(Regex("[^A-Za-z0-9ñÑ .'-]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .take(40)
     }
 
     private fun detectRoute(message: String): String {
@@ -118,6 +153,12 @@ class NotificationReaderService : NotificationListenerService(), TextToSpeech.On
         }
 
         return ""
+    }
+
+    private fun detectDistance(message: String): String {
+        val pattern = Regex("([0-9]+(?:\\.[0-9]+)?)\\s?(km|kilometers)", RegexOption.IGNORE_CASE)
+        val match = pattern.find(message)
+        return match?.groupValues?.get(1) ?: ""
     }
 
     private fun speak(message: String) {
