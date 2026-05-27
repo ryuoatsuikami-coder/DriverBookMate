@@ -3,16 +3,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:allowBackup="true"
+        android:theme="@style/AppTheme"
         android:label="DriverMate PH"
         android:icon="@drawable/app_logo"
         android:roundIcon="@drawable/app_logo"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
-        android:usesCleartextTraffic="false">
+        android:allowBackup="true"
+        android:supportsRtl="true">
 
         <activity
-            android:name="com.drivermate.ph.MainActivity"
-            android:exported="true">
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -22,8 +23,8 @@
         </activity>
 
         <service
-            android:name="com.drivermate.ph.NotificationReaderService"
-            android:label="DriverMate Notification Reader"
+            android:name=".BookingNotificationListener"
+            android:label="DriverMate PH Notification Reader"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
 
