@@ -2,6 +2,7 @@ package com.drivermate.ph
 
 import android.app.Notification
 import android.content.Intent
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
@@ -54,7 +55,16 @@ class BookingNotificationListener : NotificationListenerService() {
 
         val packageName = sbn.packageName.lowercase()
 
-        if (!packageName.contains("lalamove")) return
+        val allowedApps = listOf(
+            "lalamove",
+            "transportify",
+            "grab",
+            "moveit",
+            "angkas",
+            "joyride"
+        )
+
+        if (allowedApps.none { packageName.contains(it) }) return
 
         val extras = sbn.notification.extras
 
@@ -62,12 +72,14 @@ class BookingNotificationListener : NotificationListenerService() {
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
         val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: ""
+        val infoText = extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString() ?: ""
 
-        val fullText = "$title $text $bigText $subText"
+        val fullText = "$title $text $bigText $subText $infoText"
             .replace("\n", " ")
             .replace("₱", " pesos ")
             .replace("PHP", " pesos ")
             .replace("php", " pesos ")
+            .replace(Regex("\\s+"), " ")
             .trim()
 
         if (fullText.isBlank()) return
@@ -75,19 +87,26 @@ class BookingNotificationListener : NotificationListenerService() {
         val bookingType = detectBookingType(fullText)
         val route = detectRoute(fullText)
         val fare = detectFare(fullText)
-        val distance = detectDistance(fullText)
+        val distance = detectDistance(fullText, route)
 
         val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
         val preferredOnly = prefs.getBoolean("preferred_only", false)
+        val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
 
-        if (preferredOnly && !isPreferredRoute(route, fare, distance)) return
+        val preferred = isPreferredRoute(route, fare, distance)
+
+        if (preferredOnly && !preferred) return
 
         val message = "$bookingType booking. $route. Fare $fare pesos. Distance $distance kilometers."
 
         speakNow(message)
 
-        if (preferredOnly && isPreferredRoute(route, fare, distance)) {
+        if (preferred) {
             openApp()
+
+            if (autoOpenWaze) {
+                openWaze(route)
+            }
         }
     }
 
@@ -118,6 +137,7 @@ class BookingNotificationListener : NotificationListenerService() {
             lower.contains("immediate") -> "Immediate"
             lower.contains("regular") -> "Regular"
             lower.contains("pooling") -> "Pooling"
+            lower.contains("rush") -> "Priority"
             else -> "Booking"
         }
     }
@@ -144,11 +164,16 @@ class BookingNotificationListener : NotificationListenerService() {
         }
 
         val knownPlaces = listOf(
-            "Tanza", "Imus", "Bacoor", "Dasmarinas", "General Trias",
-            "Cavite City", "Trece Martires", "Kawit", "Noveleta",
-            "Rosario", "Naic", "Silang", "Tagaytay",
-            "Manila", "Pasay", "Makati", "BGC", "Taguig",
-            "Paranaque", "Las Pinas", "Alabang", "Quezon City"
+            "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
+            "Dasmarinas", "General Emilio Aguinaldo", "General Mariano Alvarez",
+            "General Trias", "Imus", "Indang", "Kawit", "Magallanes",
+            "Maragondon", "Mendez", "Naic", "Noveleta", "Rosario",
+            "Silang", "Tagaytay", "Tanza", "Ternate", "Trece Martires",
+
+            "Manila", "Pasay", "Makati", "BGC", "Taguig", "Paranaque",
+            "Las Pinas", "Alabang", "Quezon City", "Mandaluyong",
+            "San Juan", "Pasig", "Marikina", "Caloocan", "Malabon",
+            "Navotas", "Valenzuela", "Muntinlupa"
         )
 
         val found = knownPlaces.filter {
@@ -163,10 +188,16 @@ class BookingNotificationListener : NotificationListenerService() {
     }
 
     private fun detectFare(text: String): String {
-        val pesoPattern = Regex("""(?:₱|pesos|fare|amount|total|price)\s*([0-9]{2,5})""", RegexOption.IGNORE_CASE)
-        val match = pesoPattern.find(text)
+        val patterns = listOf(
+            Regex("""(?:fare|amount|total|price|fee)\s*[:\-]?\s*(?:pesos)?\s*([0-9]{2,5})""", RegexOption.IGNORE_CASE),
+            Regex("""(?:pesos)\s*([0-9]{2,5})""", RegexOption.IGNORE_CASE),
+            Regex("""([0-9]{2,5})\s*(?:pesos)""", RegexOption.IGNORE_CASE)
+        )
 
-        if (match != null) return match.groupValues[1]
+        for (pattern in patterns) {
+            val match = pattern.find(text)
+            if (match != null) return match.groupValues[1]
+        }
 
         val route = detectRoute(text)
         getSavedRoutes().firstOrNull { it.route.equals(route, true) }?.let {
@@ -176,13 +207,21 @@ class BookingNotificationListener : NotificationListenerService() {
         return "not detected"
     }
 
-    private fun detectDistance(text: String): String {
-        val pattern = Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
-        val match = pattern.find(text)
+    private fun detectDistance(text: String, route: String): String {
+        val patterns = listOf(
+            Regex("""(?:distance|total distance|trip distance|route distance)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
+            Regex("""(?:pickup distance|pickup)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
+            Regex("""(?:dropoff distance|drop off distance|dropoff|drop off)\s*[:\-]?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE),
+            Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
+        )
 
-        if (match != null) return match.groupValues[1]
+        for (pattern in patterns) {
+            val match = pattern.find(text)
+            if (match != null) {
+                return match.groupValues[1]
+            }
+        }
 
-        val route = detectRoute(text)
         getSavedRoutes().firstOrNull { it.route.equals(route, true) }?.let {
             if (it.distance.isNotBlank()) return it.distance
         }
@@ -192,6 +231,8 @@ class BookingNotificationListener : NotificationListenerService() {
 
     private fun isPreferredRoute(route: String, fare: String, distance: String): Boolean {
         val saved = getSavedRoutes()
+
+        if (saved.isEmpty()) return true
 
         return saved.any {
             val routeMatch = route.equals(it.route, true)
@@ -237,6 +278,38 @@ class BookingNotificationListener : NotificationListenerService() {
         }
 
         startActivity(intent)
+    }
+
+    private fun openWaze(route: String) {
+        val destination = extractDestination(route)
+
+        if (destination.isBlank() || destination == "Route not detected") return
+
+        val encodedDestination = Uri.encode(destination)
+        val wazeUri = Uri.parse("waze://?q=$encodedDestination&navigate=yes")
+
+        val intent = Intent(Intent.ACTION_VIEW, wazeUri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            val browserUri = Uri.parse("https://waze.com/ul?q=$encodedDestination&navigate=yes")
+            val browserIntent = Intent(Intent.ACTION_VIEW, browserUri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(browserIntent)
+        }
+    }
+
+    private fun extractDestination(route: String): String {
+        val parts = route.split(" to ")
+        return if (parts.size >= 2) {
+            parts[1].trim()
+        } else {
+            route.trim()
+        }
     }
 
     data class RouteData(
