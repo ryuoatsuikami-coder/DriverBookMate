@@ -20,6 +20,7 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("driver_mate_settings", MODE_PRIVATE) }
     private var tts: TextToSpeech? = null
 
+    private lateinit var root: LinearLayout
     private lateinit var content: LinearLayout
 
     private val green = Color.rgb(0, 150, 45)
@@ -57,7 +58,7 @@ class MainActivity : Activity() {
             }
         }
 
-        val root = LinearLayout(this).apply {
+        root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(bg)
         }
@@ -75,17 +76,19 @@ class MainActivity : Activity() {
     }
 
     private fun bottomNav(): LinearLayout {
-        return LinearLayout(this).apply {
+        val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(8, 8, 8, 8)
             setBackgroundColor(Color.WHITE)
-
-            addView(navButton("🏠\nHome") { showHome() })
-            addView(navButton("📍\nRoutes") { showRoutes() })
-            addView(navButton("🔔\nAlerts") { showAlertDemo() })
-            addView(navButton("⚙️\nSettings") { showSettings() })
         }
+
+        nav.addView(navButton("🏠\nHome") { showHome() })
+        nav.addView(navButton("📍\nMy Routes") { showRoutes() })
+        nav.addView(navButton("🔔\nAlerts") { showAlertDemo() })
+        nav.addView(navButton("⚙️\nSettings") { showSettings() })
+
+        return nav
     }
 
     private fun navButton(text: String, action: () -> Unit): TextView {
@@ -133,16 +136,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun imageView(resId: Int, height: Int): ImageView {
-        return ImageView(this).apply {
-            setImageResource(resId)
-            adjustViewBounds = true
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setPadding(0, 4, 0, 4)
-            layoutParams = LinearLayout.LayoutParams(-1, height)
-        }
-    }
-
     private fun greenButton(text: String, action: () -> Unit): Button {
         return Button(this).apply {
             this.text = text
@@ -156,7 +149,12 @@ class MainActivity : Activity() {
     private fun showHome() {
         clear()
 
-        content.addView(TextView(this).apply {
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 8, 0, 16)
+        }
+
+        header.addView(TextView(this).apply {
             text = "DriverMate PH"
             textSize = 24f
             gravity = Gravity.CENTER
@@ -164,31 +162,34 @@ class MainActivity : Activity() {
             setTypeface(null, 1)
         })
 
-        content.addView(TextView(this).apply {
+        header.addView(TextView(this).apply {
             text = "Smart booking alerts for drivers"
             textSize = 13f
             gravity = Gravity.CENTER
             setTextColor(gray)
         })
 
-        content.addView(imageView(R.drawable.hero_car, 260))
-
-        content.addView(TextView(this).apply {
+        header.addView(TextView(this).apply {
             text = "Your Rides,\nYour Way\nAnytime,\nAnywhere!"
-            textSize = 25f
+            textSize = 26f
             setTextColor(dark)
             setTypeface(null, 1)
-            setPadding(0, 10, 0, 12)
+            setPadding(0, 24, 0, 12)
         })
 
-        addHomeCard(R.drawable.package_truck, "Send Package", "Deliver packages safely and quickly.")
-        addHomeCard(R.drawable.city_taxi, "Book Ride", "Quick rides within Cavite and Manila.")
-        addHomeCard(R.drawable.intercity_car, "Book Intercity Ride", "Cavite to Manila route alerts.")
+        content.addView(header)
 
-        label("Preferred Route Preview")
+        addHomeCard("🚚", "Send Package", "Deliver your packages safely, anytime, anywhere.")
+        addHomeCard("🚕", "Book Ride", "Quick and easy rides within the city.")
+        addHomeCard("🚗", "Book Intercity Ride", "Seamless travel between cities, hassle-free.")
 
+        label("Preferred Routes")
         val preferred = getSavedRoutes().firstOrNull()
-        content.addView(routeCard(preferred ?: RouteData("Tanza to Imus", "200", "18"), preferred != null))
+        if (preferred != null) {
+            content.addView(routeCard(preferred, true))
+        } else {
+            content.addView(routeCard(RouteData("Tanza to Imus", "200", "18"), false))
+        }
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -196,7 +197,7 @@ class MainActivity : Activity() {
         }
 
         val preferredSwitch = Switch(this).apply {
-            text = "Preferred\nOnly"
+            text = "Read Preferred\nRoutes Only"
             textSize = 12f
             isChecked = prefs.getBoolean("preferred_only", false)
             setOnCheckedChangeListener { _, checked ->
@@ -205,7 +206,7 @@ class MainActivity : Activity() {
         }
 
         val wazeSwitch = Switch(this).apply {
-            text = "Auto\nWaze"
+            text = "Auto Open Waze\nwhen detected"
             textSize = 12f
             isChecked = prefs.getBoolean("auto_open_waze", true)
             setOnCheckedChangeListener { _, checked ->
@@ -218,18 +219,15 @@ class MainActivity : Activity() {
         content.addView(row)
     }
 
-    private fun addHomeCard(imageRes: Int, name: String, desc: String) {
+    private fun addHomeCard(icon: String, name: String, desc: String) {
         val c = card()
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
 
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        row.addView(ImageView(this).apply {
-            setImageResource(imageRes)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(110, 110))
+        row.addView(TextView(this).apply {
+            text = icon
+            textSize = 42f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(90, 90))
 
         row.addView(TextView(this).apply {
             text = "$name\n$desc"
@@ -269,13 +267,12 @@ class MainActivity : Activity() {
 
         fun render(query: String) {
             listBox.removeAllViews()
-
             val routes = generateAllRoutes()
                 .filter { it.route.contains(query, true) }
                 .take(80)
 
             listBox.addView(TextView(this).apply {
-                text = "Tap route to save • Showing ${routes.size}"
+                text = "Showing ${routes.size} routes"
                 textSize = 12f
                 setTextColor(gray)
                 setPadding(0, 0, 0, 8)
@@ -313,15 +310,15 @@ class MainActivity : Activity() {
         val to = Spinner(this)
         to.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, allPlaces)
 
-        label("Fare")
+        label("Fare (₱)")
         val fare = EditText(this).apply {
-            hint = "Example: 200"
+            hint = "Enter fare amount"
             inputType = InputType.TYPE_CLASS_NUMBER
         }
 
-        label("Distance km")
+        label("Distance (km)")
         val distance = EditText(this).apply {
-            hint = "Example: 18"
+            hint = "Enter distance"
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
 
@@ -330,7 +327,7 @@ class MainActivity : Activity() {
         content.addView(fare)
         content.addView(distance)
 
-        content.addView(greenButton("Save Route") {
+        content.addView(greenButton("💾 Save Route") {
             if (from.selectedItem.toString() == to.selectedItem.toString()) {
                 Toast.makeText(this, "Choose different places", Toast.LENGTH_SHORT).show()
                 return@greenButton
@@ -340,6 +337,13 @@ class MainActivity : Activity() {
             saveFullRoute(route, fare.text.toString(), distance.text.toString())
             Toast.makeText(this, "Route saved", Toast.LENGTH_SHORT).show()
             showSaved()
+        })
+
+        label("Popular Locations")
+        content.addView(TextView(this).apply {
+            text = "CAVITE\n${cavitePlaces.joinToString("  •  ")}\n\nMANILA\n${manilaPlaces.joinToString("  •  ")}"
+            textSize = 12f
+            setTextColor(green)
         })
     }
 
@@ -356,9 +360,7 @@ class MainActivity : Activity() {
                 setTextColor(gray)
             })
         } else {
-            saved.forEach {
-                content.addView(routeCard(it, true))
-            }
+            saved.forEach { content.addView(routeCard(it, true)) }
         }
 
         content.addView(greenButton("+ Create New Route") { showCreateRoute() })
@@ -380,19 +382,16 @@ class MainActivity : Activity() {
         clear()
         title("Alert Received")
 
-        content.addView(imageView(R.drawable.hero_car, 220))
-
         val c = card()
-
         c.addView(TextView(this).apply {
-            text = "🔔 Priority Booking Detected"
+            text = "🔔 Priority Booking Detected\nLalamove"
             textSize = 18f
             setTextColor(dark)
             setTypeface(null, 1)
         })
 
         c.addView(TextView(this).apply {
-            text = "\nRoute: Tanza to Imus\nFare: ₱200\nDistance: 18 km\nStatus: Preferred Route Matched"
+            text = "\nBooking Details\nType: Priority\nRoute: Tanza to Imus\nFare: ₱200\nDistance: 18 km\nStatus: Preferred Route Matched"
             textSize = 15f
             setTextColor(dark)
         })
@@ -443,7 +442,7 @@ class MainActivity : Activity() {
         content.addView(greenButton("Manage Saved Routes") { showSaved() })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.2.2\nDriverMate PH"
+            text = "\nVersion 1.2.1\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
@@ -462,7 +461,7 @@ class MainActivity : Activity() {
         })
 
         c.addView(TextView(this).apply {
-            text = "₱${route.fare}     •     ${route.distance} km"
+            text = "₱ Fare ${route.fare}     •     ${route.distance} km"
             textSize = 14f
             setTextColor(if (preferred) green else redOrange)
             setPadding(0, 4, 0, 4)
