@@ -48,7 +48,10 @@ class MainActivity : Activity() {
 
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale("en", "PH")
+                val result = tts?.setLanguage(Locale("en", "PH"))
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    tts?.language = Locale.US
+                }
                 tts?.setSpeechRate(0.88f)
                 tts?.setPitch(1.02f)
             }
@@ -61,7 +64,6 @@ class MainActivity : Activity() {
         }
 
         scrollView = ScrollView(this).apply {
-            fillViewport = true
             isFillViewport = true
             setBackgroundColor(bg)
             layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
@@ -71,7 +73,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 24, 24, 24)
             setBackgroundColor(bg)
-            layoutParams = ScrollView.LayoutParams(-1, -2)
+            layoutParams = LinearLayout.LayoutParams(-1, -2)
             minimumHeight = resources.displayMetrics.heightPixels
         }
 
@@ -283,9 +285,15 @@ class MainActivity : Activity() {
                 setBackgroundColor(Color.WHITE)
                 setOnClickListener {
                     when {
-                        option.contains("Search", true) || option.contains("suggestions", true) || option.contains("routes", true) -> showRoutes()
-                        option.contains("Save", true) || option.contains("Add", true) -> showCreateRoute()
+                        option.contains("Search", true) ||
+                        option.contains("suggestions", true) ||
+                        option.contains("routes", true) -> showRoutes()
+
+                        option.contains("Save", true) ||
+                        option.contains("Add", true) -> showCreateRoute()
+
                         option.contains("Waze", true) -> openWaze("Imus, Cavite")
+
                         option.contains("voice", true) -> speakTest()
                     }
                 }
@@ -307,7 +315,7 @@ class MainActivity : Activity() {
             "Priority booking. Tanza to Imus. Fare 200 pesos. Distance 18 kilometers.",
             TextToSpeech.QUEUE_FLUSH,
             null,
-            "test_voice"
+            "test_voice_${System.currentTimeMillis()}"
         )
     }
 
@@ -441,7 +449,7 @@ class MainActivity : Activity() {
         })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.2.5\nDriverMate PH"
+            text = "\nVersion 1.2.6\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
