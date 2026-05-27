@@ -35,7 +35,8 @@ class MainActivity : Activity() {
     private val cavitePlaces = listOf(
         "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
         "Dasmarinas", "General Trias", "Imus", "Kawit", "Naic",
-        "Rosario", "Silang", "Tagaytay", "Tanza", "Trece Martires"
+        "Noveleta", "Rosario", "Silang", "Tagaytay", "Tanza",
+        "Trece Martires"
     )
 
     private val manilaPlaces = listOf(
@@ -43,7 +44,17 @@ class MainActivity : Activity() {
         "Las Pinas", "Alabang", "Quezon City", "Pasig", "Muntinlupa"
     )
 
-    private val allPlaces = cavitePlaces + manilaPlaces
+    private val hiddenIntercityAreas = listOf(
+        "General Manila",
+        "General Bulacan",
+        "General Pampanga",
+        "General Cavite",
+        "General Laguna",
+        "General Batangas",
+        "General Quezon"
+    )
+
+    private val allPlaces = cavitePlaces + manilaPlaces + hiddenIntercityAreas
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,9 +98,7 @@ class MainActivity : Activity() {
         showHome()
     }
 
-    private fun dp(value: Int): Int {
-        return (value * resources.displayMetrics.density).toInt()
-    }
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun clear() {
         content.removeAllViews()
@@ -119,7 +128,7 @@ class MainActivity : Activity() {
         addCategoryCard(
             R.drawable.intercity_car,
             "Book Intercity Ride",
-            "Cavite to Manila route alerts.",
+            "Cavite, Manila, and hidden general area route alerts.",
             listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
         )
 
@@ -280,15 +289,14 @@ class MainActivity : Activity() {
         val saved = getSavedRoutes()
         val first = saved.firstOrNull() ?: RouteData("No preferred route saved", "0", "manual only")
 
-        val title = TextView(this).apply {
+        card.addView(TextView(this).apply {
             text = "Preferred Route Preview"
             textSize = 18f
             setTextColor(green)
             setTypeface(null, Typeface.BOLD)
             setPadding(dp(4), 0, 0, dp(8))
-        }
+        })
 
-        card.addView(title)
         card.addView(firstPriorityCard(first))
 
         card.addView(greenButton("Manual Add Preferred Route") {
@@ -317,7 +325,7 @@ class MainActivity : Activity() {
             })
         } else {
             saved.forEach {
-                dropdownBox.addView(routeCard(it, true))
+                dropdownBox.addView(routeCard(it))
             }
         }
 
@@ -418,12 +426,6 @@ class MainActivity : Activity() {
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("voice_enabled", checked).apply()
             }
-        }, LinearLayout.LayoutParams(-2, -2))
-
-        row.addView(View(this).apply {
-            setBackgroundColor(Color.rgb(210, 210, 210))
-        }, LinearLayout.LayoutParams(dp(1), dp(58)).apply {
-            setMargins(dp(8), 0, dp(8), 0)
         })
 
         row.addView(ImageView(this).apply {
@@ -432,29 +434,12 @@ class MainActivity : Activity() {
             setOnClickListener { openWaze("Imus, Cavite") }
         }, LinearLayout.LayoutParams(dp(76), dp(76)))
 
-        row.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-
-            addView(TextView(this@MainActivity).apply {
-                text = "Auto Waze"
-                textSize = 12f
-                setTextColor(dark)
-                setTypeface(null, Typeface.BOLD)
-            })
-
-            addView(TextView(this@MainActivity).apply {
-                text = "Only first preferred route opens Waze."
-                textSize = 11f
-                setTextColor(gray)
-            })
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-
         row.addView(Switch(this).apply {
             isChecked = prefs.getBoolean("auto_open_waze", true)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("auto_open_waze", checked).apply()
             }
-        }, LinearLayout.LayoutParams(-2, -2))
+        })
 
         card.addView(row)
         content.addView(card)
@@ -545,9 +530,15 @@ class MainActivity : Activity() {
         fun render(query: String) {
             listBox.removeAllViews()
 
-            val routes = generateAllRoutes()
-                .filter { it.route.contains(query, true) }
-                .take(100)
+            val cleanQuery = query.trim()
+
+            val routes = if (cleanQuery.isBlank()) {
+                generateVisibleRoutes().take(100)
+            } else {
+                generateAllRoutes()
+                    .filter { it.route.contains(cleanQuery, true) }
+                    .take(100)
+            }
 
             routes.forEach { route ->
                 listBox.addView(suggestedRouteCard(route))
@@ -632,20 +623,10 @@ class MainActivity : Activity() {
             inputType = InputType.TYPE_CLASS_TEXT
         }
 
-        content.addView(TextView(this).apply {
-            text = "From"
-            textSize = 14f
-            setTextColor(dark)
-            setTypeface(null, Typeface.BOLD)
-        })
+        content.addView(TextView(this).apply { text = "From" })
         content.addView(from)
 
-        content.addView(TextView(this).apply {
-            text = "To"
-            textSize = 14f
-            setTextColor(dark)
-            setTypeface(null, Typeface.BOLD)
-        })
+        content.addView(TextView(this).apply { text = "To" })
         content.addView(to)
 
         content.addView(fare)
@@ -686,16 +667,11 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         })
 
-        content.addView(greenButton("Test Voice") {
-            speakTest()
-        })
-
-        content.addView(greenButton("Manage Routes") {
-            showRoutes()
-        })
+        content.addView(greenButton("Test Voice") { speakTest() })
+        content.addView(greenButton("Manage Routes") { showRoutes() })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.3.2\nDriverMate PH"
+            text = "\nVersion 1.3.5\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
@@ -715,7 +691,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun routeCard(route: RouteData, preferred: Boolean): LinearLayout {
+    private fun routeCard(route: RouteData): LinearLayout {
         val c = whiteCard()
 
         val row = LinearLayout(this).apply {
@@ -756,7 +732,7 @@ class MainActivity : Activity() {
         return c
     }
 
-    private fun generateAllRoutes(): List<RouteData> {
+    private fun generateVisibleRoutes(): List<RouteData> {
         val list = mutableListOf<RouteData>()
 
         for (from in cavitePlaces) {
@@ -775,6 +751,19 @@ class MainActivity : Activity() {
         return list.shuffled()
     }
 
+    private fun generateAllRoutes(): List<RouteData> {
+        val list = mutableListOf<RouteData>()
+        val searchablePlaces = cavitePlaces + manilaPlaces + hiddenIntercityAreas
+
+        for (from in searchablePlaces) {
+            for (to in searchablePlaces) {
+                if (from != to) list.add(makeRoute(from, to))
+            }
+        }
+
+        return list.shuffled()
+    }
+
     private fun makeRoute(from: String, to: String): RouteData {
         val distance = estimateDistance(from, to)
         val fare = estimateFare(distance)
@@ -785,8 +774,13 @@ class MainActivity : Activity() {
         val a = abs(from.hashCode() % 35)
         val b = abs(to.hashCode() % 35)
         val base = abs(a - b) + 8
+        val intercity = hiddenIntercityAreas.contains(from) || hiddenIntercityAreas.contains(to)
         val manilaRoute = manilaPlaces.contains(from) || manilaPlaces.contains(to)
-        return if (manilaRoute) base + 18 else base
+        return when {
+            intercity -> base + 45
+            manilaRoute -> base + 18
+            else -> base
+        }
     }
 
     private fun estimateFare(distance: Int): Int {
