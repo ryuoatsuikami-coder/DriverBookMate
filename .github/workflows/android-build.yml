@@ -1,4 +1,4 @@
-name: Build DriverMate PH AAB
+name: Build DriverMate PH Play Store AAB
 
 on:
   push:
@@ -37,8 +37,8 @@ jobs:
           cd project
           ../gradle-8.7/bin/gradle bundleRelease
 
-      - name: Upload AAB
+      - name: Upload Play Store AAB
         uses: actions/upload-artifact@v4
         with:
-          name: DriverMatePH-release-aab
+          name: DriverMatePH-playstore-aab
           path: project/app/build/outputs/bundle/release/*.aab
