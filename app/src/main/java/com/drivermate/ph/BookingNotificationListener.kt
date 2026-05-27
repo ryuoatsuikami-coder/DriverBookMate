@@ -169,7 +169,6 @@ class BookingNotificationListener : NotificationListenerService() {
             "General Trias", "Imus", "Indang", "Kawit", "Magallanes",
             "Maragondon", "Mendez", "Naic", "Noveleta", "Rosario",
             "Silang", "Tagaytay", "Tanza", "Ternate", "Trece Martires",
-
             "Manila", "Pasay", "Makati", "BGC", "Taguig", "Paranaque",
             "Las Pinas", "Alabang", "Quezon City", "Mandaluyong",
             "San Juan", "Pasig", "Marikina", "Caloocan", "Malabon",
@@ -217,9 +216,7 @@ class BookingNotificationListener : NotificationListenerService() {
 
         for (pattern in patterns) {
             val match = pattern.find(text)
-            if (match != null) {
-                return match.groupValues[1]
-            }
+            if (match != null) return match.groupValues[1]
         }
 
         getSavedRoutes().firstOrNull { it.route.equals(route, true) }?.let {
@@ -282,7 +279,6 @@ class BookingNotificationListener : NotificationListenerService() {
 
     private fun openWaze(route: String) {
         val destination = extractDestination(route)
-
         if (destination.isBlank() || destination == "Route not detected") return
 
         val encodedDestination = Uri.encode(destination)
