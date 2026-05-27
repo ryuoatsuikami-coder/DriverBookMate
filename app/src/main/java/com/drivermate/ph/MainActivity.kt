@@ -15,6 +15,12 @@ class MainActivity : Activity() {
     private var tts: TextToSpeech? = null
     private val prefs by lazy { getSharedPreferences("driver_mate_settings", MODE_PRIVATE) }
 
+    private lateinit var contentArea: LinearLayout
+
+    private val orange = Color.rgb(255, 103, 0)
+    private val yellow = Color.rgb(255, 193, 7)
+    private val dark = Color.rgb(24, 24, 24)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -25,87 +31,119 @@ class MainActivity : Activity() {
             }
         }
 
-        val orange = Color.rgb(255, 103, 0)
-        val yellow = Color.rgb(255, 193, 7)
-        val dark = Color.rgb(25, 25, 25)
-
-        val layout = LinearLayout(this).apply {
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(36, 60, 36, 36)
             setBackgroundColor(orange)
+            setPadding(24, 40, 24, 24)
         }
 
         val title = TextView(this).apply {
             text = "DriverMate PH"
-            textSize = 32f
+            textSize = 30f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         }
 
         val subtitle = TextView(this).apply {
             text = "Smart booking alerts for drivers"
-            textSize = 16f
+            textSize = 14f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 30)
+            setPadding(0, 6, 0, 20)
         }
 
-        val switchPreferredOnly = Switch(this).apply {
+        val tabRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
+        contentArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(20, 24, 20, 20)
+            setBackgroundColor(Color.WHITE)
+        }
+
+        val homeTab = makeTabButton("Home") { showHome() }
+        val routeTab = makeTabButton("Routes") { showRoutes() }
+        val fareTab = makeTabButton("Fare") { showFare() }
+        val distanceTab = makeTabButton("Distance") { showDistance() }
+
+        tabRow.addView(homeTab)
+        tabRow.addView(routeTab)
+        tabRow.addView(fareTab)
+        tabRow.addView(distanceTab)
+
+        root.addView(title)
+        root.addView(subtitle)
+        root.addView(tabRow)
+        root.addView(contentArea)
+
+        setContentView(root)
+
+        showHome()
+    }
+
+    private fun makeTabButton(label: String, action: () -> Unit): Button {
+        return Button(this).apply {
+            text = label
+            textSize = 12f
+            setTextColor(dark)
+            setBackgroundColor(yellow)
+            setOnClickListener { action() }
+        }
+    }
+
+    private fun clearContent() {
+        contentArea.removeAllViews()
+    }
+
+    private fun addTitle(text: String) {
+        contentArea.addView(TextView(this).apply {
+            this.text = text
+            textSize = 22f
+            setTextColor(dark)
+            setPadding(0, 0, 0, 16)
+        })
+    }
+
+    private fun addLabel(text: String) {
+        contentArea.addView(TextView(this).apply {
+            this.text = text
+            textSize = 15f
+            setTextColor(Color.DKGRAY)
+            setPadding(0, 12, 0, 6)
+        })
+    }
+
+    private fun showHome() {
+        clearContent()
+        addTitle("Driver Setup")
+
+        val preferredOnly = Switch(this).apply {
             text = "Read preferred routes only"
-            textSize = 18f
-            setTextColor(Color.WHITE)
+            textSize = 16f
             isChecked = prefs.getBoolean("preferred_only", false)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean("preferred_only", checked).apply()
             }
         }
 
-        val keywordLabel = TextView(this).apply {
-            text = "Preferred route keywords"
-            textSize = 16f
-            setTextColor(Color.WHITE)
-            setPadding(0, 24, 0, 8)
-        }
-
-        val keywordInput = EditText(this).apply {
-            setText(prefs.getString("preferred_keywords", "tanza,cavite city,imus,bacoor,dasma"))
-            hint = "Example: tanza,cavite city,imus"
-            setTextColor(Color.BLACK)
-            setHintTextColor(Color.GRAY)
-            setBackgroundColor(Color.WHITE)
-            setPadding(20, 10, 20, 10)
-        }
-
-        val saveButton = Button(this).apply {
-            text = "Save Preferred Routes"
-            setBackgroundColor(yellow)
-            setTextColor(dark)
-            setOnClickListener {
-                prefs.edit()
-                    .putString("preferred_keywords", keywordInput.text.toString())
-                    .apply()
-
-                Toast.makeText(this@MainActivity, "Preferred routes saved", Toast.LENGTH_SHORT).show()
-            }
-        }
-
         val allowButton = Button(this).apply {
             text = "Allow Notification Access"
-            setBackgroundColor(Color.WHITE)
-            setTextColor(orange)
+            setBackgroundColor(orange)
+            setTextColor(Color.WHITE)
             setOnClickListener {
                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             }
         }
 
         val testButton = Button(this).apply {
-            text = "Test Filipino Accent Voice"
+            text = "Test Voice"
             setBackgroundColor(dark)
             setTextColor(Color.WHITE)
             setOnClickListener {
                 tts?.speak(
-                    "Immediate booking. Tanza to Cavite City. 200 pesos. Distance from you not shown.",
+                    "Priority. From Tanza to Imus. Fare 200 pesos.",
                     TextToSpeech.QUEUE_FLUSH,
                     null,
                     "driver_mate_test"
@@ -113,25 +151,86 @@ class MainActivity : Activity() {
             }
         }
 
-        val footer = TextView(this).apply {
-            text = "Version 1.0.1"
-            textSize = 12f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setPadding(0, 30, 0, 0)
+        contentArea.addView(preferredOnly)
+        contentArea.addView(allowButton)
+        contentArea.addView(testButton)
+    }
+
+    private fun showRoutes() {
+        clearContent()
+        addTitle("Preferred Routes")
+
+        addLabel("Enter preferred places separated by comma")
+
+        val input = EditText(this).apply {
+            setText(prefs.getString("preferred_keywords", "tanza,imus,cavite city,bacoor,dasma"))
+            hint = "Example: tanza, imus, cavite city"
         }
 
-        layout.addView(title)
-        layout.addView(subtitle)
-        layout.addView(switchPreferredOnly)
-        layout.addView(keywordLabel)
-        layout.addView(keywordInput)
-        layout.addView(saveButton)
-        layout.addView(allowButton)
-        layout.addView(testButton)
-        layout.addView(footer)
+        val save = Button(this).apply {
+            text = "Save Routes"
+            setBackgroundColor(orange)
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                prefs.edit().putString("preferred_keywords", input.text.toString()).apply()
+                Toast.makeText(this@MainActivity, "Preferred routes saved", Toast.LENGTH_SHORT).show()
+            }
+        }
 
-        setContentView(layout)
+        contentArea.addView(input)
+        contentArea.addView(save)
+    }
+
+    private fun showFare() {
+        clearContent()
+        addTitle("Fare Settings")
+
+        addLabel("Minimum fare in pesos")
+
+        val input = EditText(this).apply {
+            setText(prefs.getString("minimum_fare", "200"))
+            hint = "Example: 200"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        }
+
+        val save = Button(this).apply {
+            text = "Save Fare"
+            setBackgroundColor(orange)
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                prefs.edit().putString("minimum_fare", input.text.toString()).apply()
+                Toast.makeText(this@MainActivity, "Minimum fare saved", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        contentArea.addView(input)
+        contentArea.addView(save)
+    }
+
+    private fun showDistance() {
+        clearContent()
+        addTitle("Preferred Distance")
+
+        addLabel("Maximum pickup distance in kilometers")
+
+        val input = EditText(this).apply {
+            setText(prefs.getString("maximum_distance", "5"))
+            hint = "Example: 5"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        }
+
+        val save = Button(this).apply {
+            text = "Save Distance"
+            setBackgroundColor(orange)
+            setTextColor(Color.WHITE)
+            setOnClickListener {
+                prefs.edit().putString("maximum_distance", input.text.toString()).apply()
+                Toast.makeText(this@MainActivity, "Preferred distance saved", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        contentArea.addView(input)
+        contentArea.addView(save)
     }
 
     override fun onDestroy() {
