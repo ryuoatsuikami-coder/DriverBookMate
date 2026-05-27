@@ -97,9 +97,11 @@ class BookingNotificationListener : NotificationListenerService() {
                 tts?.setSpeechRate(0.85f)
                 tts?.setPitch(1.03f)
 
+                // IMPORTANT:
+                // This makes TTS follow the phone MEDIA VOLUME.
                 tts?.setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build()
                 )
@@ -225,11 +227,10 @@ class BookingNotificationListener : NotificationListenerService() {
 
         val lower = cleanText.lowercase()
 
-        val normalizedPlaces = allPlaces.map { raw ->
-            raw to normalizePlace(raw)
-        }.distinctBy { it.second.lowercase() }
+        val normalizedPlaces = allPlaces
+            .map { raw -> raw to normalizePlace(raw) }
+            .distinctBy { it.second.lowercase() }
 
-        // 1. Direct pattern: FROM to TO
         for ((rawFrom, cleanFrom) in normalizedPlaces) {
             for ((rawTo, cleanTo) in normalizedPlaces) {
                 if (cleanFrom.equals(cleanTo, true)) continue
@@ -245,7 +246,6 @@ class BookingNotificationListener : NotificationListenerService() {
             }
         }
 
-        // 2. Exact saved route check
         for (saved in getSavedRoutes()) {
             val parts = saved.route.split(" to ", ignoreCase = true)
 
@@ -263,7 +263,6 @@ class BookingNotificationListener : NotificationListenerService() {
             }
         }
 
-        // 3. Fallback: first two DIFFERENT places by position
         val found = normalizedPlaces
             .mapNotNull { (raw, clean) ->
                 val index = lower.indexOf(raw.lowercase())
