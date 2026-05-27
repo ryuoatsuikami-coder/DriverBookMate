@@ -63,15 +63,9 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.WHITE)
         }
 
-        val homeTab = makeTabButton("Home") { showHome() }
-        val routeTab = makeTabButton("Routes") { showRoutes() }
-        val fareTab = makeTabButton("Fare") { showFare() }
-        val distanceTab = makeTabButton("Distance") { showDistance() }
-
-        tabRow.addView(homeTab)
-        tabRow.addView(routeTab)
-        tabRow.addView(fareTab)
-        tabRow.addView(distanceTab)
+        tabRow.addView(makeTabButton("Home") { showHome() })
+        tabRow.addView(makeTabButton("Add") { showAddOptions() })
+        tabRow.addView(makeTabButton("Saved") { showSavedList() })
 
         root.addView(title)
         root.addView(subtitle)
@@ -79,7 +73,6 @@ class MainActivity : Activity() {
         root.addView(contentArea)
 
         setContentView(root)
-
         showHome()
     }
 
@@ -120,7 +113,7 @@ class MainActivity : Activity() {
         addTitle("Driver Setup")
 
         val preferredOnly = Switch(this).apply {
-            text = "Read preferred routes only"
+            text = "Read preferred saved options only"
             textSize = 16f
             isChecked = prefs.getBoolean("preferred_only", false)
             setOnCheckedChangeListener { _, checked ->
@@ -143,7 +136,7 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
             setOnClickListener {
                 tts?.speak(
-                    "Priority. From Tanza to Imus. Fare 200 pesos.",
+                    "Priority booking. From Tanza to Imus. Fare 200 pesos.",
                     TextToSpeech.QUEUE_FLUSH,
                     null,
                     "driver_mate_test"
@@ -156,81 +149,114 @@ class MainActivity : Activity() {
         contentArea.addView(testButton)
     }
 
-    private fun showRoutes() {
+    private fun showAddOptions() {
         clearContent()
-        addTitle("Preferred Routes")
+        addTitle("Add Preferred Option")
 
-        addLabel("Enter preferred places separated by comma")
+        addLabel("Choose option type")
+
+        val options = arrayOf("Route", "Fare", "Distance")
+        val spinner = Spinner(this)
+        spinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, options)
+
+        addLabel("Enter value")
 
         val input = EditText(this).apply {
-            setText(prefs.getString("preferred_keywords", "tanza,imus,cavite city,bacoor,dasma"))
-            hint = "Example: tanza, imus, cavite city"
+            hint = "Example: Tanza to Imus / 200 / 5"
         }
 
-        val save = Button(this).apply {
-            text = "Save Routes"
+        val saveButton = Button(this).apply {
+            text = "Save to List"
             setBackgroundColor(orange)
             setTextColor(Color.WHITE)
             setOnClickListener {
-                prefs.edit().putString("preferred_keywords", input.text.toString()).apply()
-                Toast.makeText(this@MainActivity, "Preferred routes saved", Toast.LENGTH_SHORT).show()
+                val type = spinner.selectedItem.toString()
+                val value = input.text.toString().trim()
+
+                if (value.isBlank()) {
+                    Toast.makeText(this@MainActivity, "Please enter a value", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                saveOption(type, value)
+                input.setText("")
+                Toast.makeText(this@MainActivity, "$type saved", Toast.LENGTH_SHORT).show()
+                showSavedList()
             }
         }
 
+        contentArea.addView(spinner)
         contentArea.addView(input)
-        contentArea.addView(save)
+        contentArea.addView(saveButton)
     }
 
-    private fun showFare() {
-        clearContent()
-        addTitle("Fare Settings")
-
-        addLabel("Minimum fare in pesos")
-
-        val input = EditText(this).apply {
-            setText(prefs.getString("minimum_fare", "200"))
-            hint = "Example: 200"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+    private fun saveOption(type: String, value: String) {
+        val key = when (type) {
+            "Route" -> "saved_routes"
+            "Fare" -> "saved_fares"
+            "Distance" -> "saved_distances"
+            else -> "saved_routes"
         }
 
-        val save = Button(this).apply {
-            text = "Save Fare"
-            setBackgroundColor(orange)
-            setTextColor(Color.WHITE)
-            setOnClickListener {
-                prefs.edit().putString("minimum_fare", input.text.toString()).apply()
-                Toast.makeText(this@MainActivity, "Minimum fare saved", Toast.LENGTH_SHORT).show()
-            }
+        val current = prefs.getString(key, "") ?: ""
+        val updated = if (current.isBlank()) {
+            value
+        } else {
+            "$current|$value"
         }
 
-        contentArea.addView(input)
-        contentArea.addView(save)
+        prefs.edit().putString(key, updated).apply()
     }
 
-    private fun showDistance() {
+    private fun showSavedList() {
         clearContent()
-        addTitle("Preferred Distance")
+        addTitle("Saved Places List")
 
-        addLabel("Maximum pickup distance in kilometers")
+        addSavedSection("Routes", "saved_routes")
+        addSavedSection("Fares", "saved_fares")
+        addSavedSection("Distances", "saved_distances")
 
-        val input = EditText(this).apply {
-            setText(prefs.getString("maximum_distance", "5"))
-            hint = "Example: 5"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-
-        val save = Button(this).apply {
-            text = "Save Distance"
-            setBackgroundColor(orange)
+        val clearButton = Button(this).apply {
+            text = "Delete All Saved"
+            setBackgroundColor(dark)
             setTextColor(Color.WHITE)
             setOnClickListener {
-                prefs.edit().putString("maximum_distance", input.text.toString()).apply()
-                Toast.makeText(this@MainActivity, "Preferred distance saved", Toast.LENGTH_SHORT).show()
+                prefs.edit()
+                    .remove("saved_routes")
+                    .remove("saved_fares")
+                    .remove("saved_distances")
+                    .apply()
+
+                Toast.makeText(this@MainActivity, "Saved list cleared", Toast.LENGTH_SHORT).show()
+                showSavedList()
             }
         }
 
-        contentArea.addView(input)
-        contentArea.addView(save)
+        contentArea.addView(clearButton)
+    }
+
+    private fun addSavedSection(title: String, key: String) {
+        addLabel(title)
+
+        val saved = prefs.getString(key, "") ?: ""
+
+        if (saved.isBlank()) {
+            contentArea.addView(TextView(this).apply {
+                text = "No saved $title yet"
+                textSize = 14f
+                setTextColor(Color.GRAY)
+            })
+            return
+        }
+
+        saved.split("|").filter { it.isNotBlank() }.forEach { item ->
+            contentArea.addView(TextView(this).apply {
+                text = "• $item"
+                textSize = 16f
+                setTextColor(dark)
+                setPadding(0, 4, 0, 4)
+            })
+        }
     }
 
     override fun onDestroy() {
