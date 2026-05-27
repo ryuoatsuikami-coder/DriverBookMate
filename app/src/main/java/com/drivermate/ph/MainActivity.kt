@@ -113,7 +113,7 @@ class MainActivity : Activity() {
             R.drawable.city_taxi,
             "Book Ride",
             "Quick rides within Cavite and Manila.",
-            listOf("Search Cavite routes", "Search Manila-Cavite routes", "Save preferred ride route", "Test ride voice")
+            listOf("Search Cavite routes", "Search Manila-Cavite routes", "Add preferred ride route", "Test ride voice")
         )
 
         addCategoryCard(
@@ -254,7 +254,6 @@ class MainActivity : Activity() {
                         option.contains("suggested", true) ||
                         option.contains("routes", true) -> showRoutes()
 
-                        option.contains("Save", true) ||
                         option.contains("Add", true) -> showCreateRoute()
 
                         option.contains("Waze", true) -> openWaze("Imus, Cavite")
@@ -279,7 +278,7 @@ class MainActivity : Activity() {
         val card = whiteCard()
 
         val saved = getSavedRoutes()
-        val first = saved.firstOrNull() ?: RouteData("Tanza to Imus", "200", "18")
+        val first = saved.firstOrNull() ?: RouteData("No preferred route saved", "0", "manual only")
 
         val title = TextView(this).apply {
             text = "Preferred Route Preview⌄"
@@ -290,8 +289,11 @@ class MainActivity : Activity() {
         }
 
         card.addView(title)
-
         card.addView(firstPriorityCard(first))
+
+        card.addView(greenButton("Manual Add Preferred Route") {
+            showCreateRoute()
+        })
 
         val dropdownTitle = TextView(this).apply {
             text = "All other preferred routes      ⌄"
@@ -362,7 +364,7 @@ class MainActivity : Activity() {
             })
 
             addView(TextView(this@MainActivity).apply {
-                text = "₱${route.fare}     •     ${route.distance} km"
+                text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
                 textSize = 15f
                 setTextColor(dark)
             })
@@ -377,13 +379,6 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.rgb(210, 245, 220))
             setPadding(dp(8), dp(6), dp(8), dp(6))
         }, LinearLayout.LayoutParams(-2, -2))
-
-        row.addView(TextView(this).apply {
-            text = "›"
-            textSize = 34f
-            setTextColor(green)
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(dp(36), dp(60)))
 
         return row
     }
@@ -512,7 +507,7 @@ class MainActivity : Activity() {
         }
 
         tts?.speak(
-            "Priority booking. Tanza to Imus. Fare 200 pesos. Distance 18 kilometers.",
+            "Priority booking. Tanza to Imus. Fare 200 pesos. Distance not detected.",
             TextToSpeech.QUEUE_FLUSH,
             null,
             "test_voice_${System.currentTimeMillis()}"
@@ -530,8 +525,12 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
         })
 
+        content.addView(greenButton("Manual Add Preferred Route") {
+            showCreateRoute()
+        })
+
         val search = EditText(this).apply {
-            hint = "Search routes..."
+            hint = "Search suggested routes..."
             inputType = InputType.TYPE_CLASS_TEXT
             setSingleLine(true)
         }
@@ -553,13 +552,7 @@ class MainActivity : Activity() {
                 .take(100)
 
             routes.forEach { route ->
-                val row = routeCard(route, isSaved(route.route))
-                row.setOnClickListener {
-                    saveFullRoute(route.route, route.fare, route.distance)
-                    Toast.makeText(this, "Route saved", Toast.LENGTH_SHORT).show()
-                    render(search.text.toString())
-                }
-                listBox.addView(row)
+                listBox.addView(suggestedRouteCard(route))
             }
         }
 
@@ -572,11 +565,53 @@ class MainActivity : Activity() {
         render("")
     }
 
+    private fun suggestedRouteCard(route: RouteData): LinearLayout {
+        val c = whiteCard()
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        row.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+
+            addView(TextView(this@MainActivity).apply {
+                text = "📍 ${route.route}"
+                textSize = 16f
+                setTextColor(dark)
+                setTypeface(null, Typeface.BOLD)
+            })
+
+            addView(TextView(this@MainActivity).apply {
+                text = "Suggested fare: ₱${route.fare} • Suggested distance only"
+                textSize = 13f
+                setTextColor(if (isSaved(route.route)) green else orange)
+            })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        row.addView(Button(this).apply {
+            text = if (isSaved(route.route)) "SAVED" else "ADD"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            setBackgroundColor(if (isSaved(route.route)) gray else green)
+            isEnabled = !isSaved(route.route)
+            setOnClickListener {
+                saveFullRoute(route.route, route.fare, "manual only")
+                Toast.makeText(this@MainActivity, "Preferred route added", Toast.LENGTH_SHORT).show()
+                showRoutes()
+            }
+        }, LinearLayout.LayoutParams(dp(90), -2))
+
+        c.addView(row)
+        return c
+    }
+
     private fun showCreateRoute() {
         clear()
 
         content.addView(TextView(this).apply {
-            text = "Create Route"
+            text = "Manual Add Preferred Route"
             textSize = 26f
             gravity = Gravity.CENTER
             setTextColor(green)
@@ -590,24 +625,41 @@ class MainActivity : Activity() {
         to.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, allPlaces)
 
         val fare = EditText(this).apply {
-            hint = "Fare example: 200"
+            hint = "Minimum fare example: 200"
             inputType = InputType.TYPE_CLASS_NUMBER
         }
 
         val distance = EditText(this).apply {
-            hint = "Distance example: 18"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            hint = "Optional distance note example: manual only"
+            inputType = InputType.TYPE_CLASS_TEXT
         }
 
+        content.addView(TextView(this).apply {
+            text = "From"
+            textSize = 14f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        })
         content.addView(from)
+
+        content.addView(TextView(this).apply {
+            text = "To"
+            textSize = 14f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        })
         content.addView(to)
+
         content.addView(fare)
         content.addView(distance)
 
-        content.addView(greenButton("Save Route") {
+        content.addView(greenButton("Add Preferred Route") {
             val route = "${from.selectedItem} to ${to.selectedItem}"
-            saveFullRoute(route, fare.text.toString(), distance.text.toString())
-            Toast.makeText(this, "Route saved", Toast.LENGTH_SHORT).show()
+            val fareValue = fare.text.toString().ifBlank { "0" }
+            val distanceValue = distance.text.toString().ifBlank { "manual only" }
+
+            saveFullRoute(route, fareValue, distanceValue)
+            Toast.makeText(this, "Preferred route added", Toast.LENGTH_SHORT).show()
             showRoutes()
         })
     }
@@ -616,7 +668,7 @@ class MainActivity : Activity() {
         clear()
         addTopBar()
         addHeroBanner()
-        content.addView(firstPriorityCard(RouteData("Tanza to Imus", "200", "18")))
+        content.addView(firstPriorityCard(RouteData("Tanza to Imus", "200", "manual only")))
         content.addView(greenButton("Test Voice Alert") { speakTest() })
         content.addView(greenButton("Open Waze") { openWaze("Imus, Cavite") })
     }
@@ -645,7 +697,7 @@ class MainActivity : Activity() {
         })
 
         content.addView(TextView(this).apply {
-            text = "\nVersion 1.2.9\nDriverMate PH"
+            text = "\nVersion 1.3.0\nDriverMate PH"
             textSize = 14f
             gravity = Gravity.CENTER
             setTextColor(gray)
@@ -677,7 +729,7 @@ class MainActivity : Activity() {
         })
 
         c.addView(TextView(this).apply {
-            text = "₱${route.fare}     •     ${route.distance} km"
+            text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
             textSize = 14f
             setTextColor(if (preferred) green else orange)
         })
@@ -707,7 +759,7 @@ class MainActivity : Activity() {
     private fun makeRoute(from: String, to: String): RouteData {
         val distance = estimateDistance(from, to)
         val fare = estimateFare(distance)
-        return RouteData("$from to $to", fare.toString(), distance.toString())
+        return RouteData("$from to $to", fare.toString(), "suggested only")
     }
 
     private fun estimateDistance(from: String, to: String): Int {
