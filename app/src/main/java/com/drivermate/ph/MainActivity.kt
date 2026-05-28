@@ -139,8 +139,6 @@ class MainActivity : Activity() {
         if (resetScroll) scrollView.post { scrollView.scrollTo(0, 0) }
     }
 
-    // ================= HOME =================
-
     private fun showHome() {
         clear()
         homeHeader()
@@ -356,8 +354,6 @@ class MainActivity : Activity() {
 
         return card.apply { layoutParams = margin(0, dp(4), 0, dp(4)) }
     }
-
-    // ================= ROUTES =================
 
     private fun showRoutes(resetScroll: Boolean = true) {
         clear(resetScroll)
@@ -650,8 +646,6 @@ class MainActivity : Activity() {
         prefs.edit().putStringSet("saved_routes", routes).apply()
     }
 
-    // ================= ALERTS =================
-
     private fun showAlerts() {
         clear()
         pageTitle("Alerts")
@@ -773,8 +767,6 @@ class MainActivity : Activity() {
         content.addView(card, margin(0, dp(8), 0, dp(20)))
     }
 
-    // ================= SETTINGS =================
-
     private fun showSettings() {
         clear()
         pageTitle("Settings")
@@ -783,8 +775,8 @@ class MainActivity : Activity() {
             "Voice & Sound",
             listOf(
                 settingSwitch("🔊", "Voice Alerts", "voice_enabled"),
+                voiceVolumeSlider(),
                 settingSwitch("▌▌", "Speak Every Route", "speak_all_routes"),
-                settingText("🔔", "Alert Volume", "Use phone media volume"),
                 settingSwitch("📳", "Vibrate Alerts", "vibrate_alerts")
             )
         )
@@ -809,6 +801,69 @@ class MainActivity : Activity() {
         content.addView(blueButton("Open Notification Access") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }, margin(0, dp(12), 0, dp(20)))
+    }
+
+    private fun voiceVolumeSlider(): LinearLayout {
+        val savedVolume = prefs.getFloat("voice_volume", 1.0f)
+        val currentProgress = (savedVolume * 100).toInt()
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(10), 0, dp(14))
+        }
+
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val volumeLabel = TextView(this).apply {
+            text = "🔔 Alert Volume"
+            textSize = 15f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        }
+
+        val percentLabel = TextView(this).apply {
+            text = "$currentProgress%"
+            textSize = 13f
+            setTextColor(blue)
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.END
+        }
+
+        topRow.addView(volumeLabel, LinearLayout.LayoutParams(0, -2, 1f))
+        topRow.addView(percentLabel, LinearLayout.LayoutParams(dp(60), -2))
+
+        val seekBar = SeekBar(this).apply {
+            max = 100
+            progress = currentProgress
+
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    val volume = progress / 100f
+                    prefs.edit().putFloat("voice_volume", volume).apply()
+                    percentLabel.text = "$progress%"
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    speak("Voice volume test.")
+                }
+            })
+        }
+
+        row.addView(topRow)
+        row.addView(seekBar, LinearLayout.LayoutParams(-1, dp(45)))
+
+        row.addView(TextView(this).apply {
+            text = "Controls the voice volume used when reading booking alerts."
+            textSize = 11f
+            setTextColor(gray)
+        })
+
+        return row
     }
 
     private fun settingsGroup(title: String, rows: List<LinearLayout>) {
@@ -885,8 +940,6 @@ class MainActivity : Activity() {
         return row
     }
 
-    // ================= VOICE =================
-
     private fun speakBookingRoute(
         appName: String,
         route: String,
@@ -924,15 +977,19 @@ class MainActivity : Activity() {
             return
         }
 
+        val volume = prefs.getFloat("voice_volume", 1.0f).coerceIn(0.0f, 1.0f)
+
+        val params = Bundle().apply {
+            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume)
+        }
+
         tts?.speak(
             message,
             TextToSpeech.QUEUE_FLUSH,
-            null,
+            params,
             "voice_${System.currentTimeMillis()}"
         )
     }
-
-    // ================= COMMON UI =================
 
     private fun pageTitle(title: String) {
         content.addView(TextView(this).apply {
