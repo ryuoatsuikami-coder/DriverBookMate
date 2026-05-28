@@ -27,7 +27,6 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             ttsReady = true
-
             tts?.language = Locale.US
             tts?.setSpeechRate(0.88f)
             tts?.setPitch(1.02f)
@@ -47,15 +46,27 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
         if (!prefs.getBoolean("voice_enabled", true)) return
 
         val appName = detectBookingApp(sbn.packageName) ?: return
-
         if (!isAppEnabled(appName)) return
 
         val text = extractNotificationText(sbn.notification)
         if (text.isBlank()) return
 
         val booking = parseBooking(text)
-
         if (booking.pickup.isBlank() && booking.dropoff.isBlank()) return
+
+        val speakAll = prefs.getBoolean("speak_all_routes", true)
+
+        if (!speakAll) {
+            val route = "${booking.pickup} → ${booking.dropoff}"
+            val reverseRoute = "${booking.dropoff} → ${booking.pickup}"
+            val savedRoutes = prefs.getStringSet("saved_routes", emptySet()) ?: emptySet()
+
+            val matched = savedRoutes.any {
+                it.equals(route, true) || it.equals(reverseRoute, true)
+            }
+
+            if (!matched) return
+        }
 
         val message = buildSpokenMessage(appName, booking)
         speak(message)
@@ -101,7 +112,7 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             .filter { it.isNotBlank() }
             .joinToString(" ")
             .replace("\n", " ")
-            .replace("  ", " ")
+            .replace(Regex("\\s+"), " ")
             .trim()
     }
 
@@ -141,7 +152,6 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             .replace("➜", " → ")
             .replace("→", " → ")
             .replace(" to ", " → ", ignoreCase = true)
-            .replace(" from ", " from ", ignoreCase = true)
             .replace(Regex("\\s+"), " ")
             .trim()
     }
@@ -154,9 +164,7 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
 
         for (p in patterns) {
             val matcher = Pattern.compile(p).matcher(text)
-            if (matcher.find()) {
-                return matcher.group(2)?.trim().orEmpty()
-            }
+            if (matcher.find()) return matcher.group(2)?.trim().orEmpty()
         }
 
         return ""
@@ -170,9 +178,7 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
 
         for (p in patterns) {
             val matcher = Pattern.compile(p).matcher(text)
-            if (matcher.find()) {
-                return matcher.group(2)?.trim().orEmpty()
-            }
+            if (matcher.find()) return matcher.group(2)?.trim().orEmpty()
         }
 
         return ""
@@ -184,10 +190,7 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
         val parts = text.split(" → ", limit = 2)
         if (parts.size < 2) return Pair("", "")
 
-        val left = removeNoise(parts[0])
-        val right = removeNoise(parts[1])
-
-        return Pair(left, right)
+        return Pair(removeNoise(parts[0]), removeNoise(parts[1]))
     }
 
     private fun extractFare(text: String): String {
