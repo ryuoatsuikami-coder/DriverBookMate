@@ -97,8 +97,7 @@ class BookingNotificationListener : NotificationListenerService() {
                 tts?.setSpeechRate(0.85f)
                 tts?.setPitch(1.03f)
 
-                // IMPORTANT:
-                // This makes TTS follow the phone MEDIA VOLUME.
+                // Voice follows MEDIA volume.
                 tts?.setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -141,6 +140,7 @@ class BookingNotificationListener : NotificationListenerService() {
             .replace("php", " pesos ")
             .replace("→", " to ")
             .replace("➡", " to ")
+            .replace(" - ", " to ")
             .replace(Regex("\\s+"), " ")
             .trim()
 
@@ -231,6 +231,62 @@ class BookingNotificationListener : NotificationListenerService() {
             .map { raw -> raw to normalizePlace(raw) }
             .distinctBy { it.second.lowercase() }
 
+        fun findPlaceAfterKeyword(keywords: List<String>): String? {
+            for (keyword in keywords) {
+                val keywordIndex = lower.indexOf(keyword.lowercase())
+                if (keywordIndex >= 0) {
+                    val searchArea = lower.substring(keywordIndex)
+
+                    val found = normalizedPlaces
+                        .mapNotNull { (raw, clean) ->
+                            val index = searchArea.indexOf(raw.lowercase())
+                            if (index >= 0) index to clean else null
+                        }
+                        .sortedBy { it.first }
+                        .firstOrNull()
+
+                    if (found != null) return found.second
+                }
+            }
+            return null
+        }
+
+        // Pickup is always detected first.
+        val pickup = findPlaceAfterKeyword(
+            listOf(
+                "pickup",
+                "pick up",
+                "pick-up",
+                "from",
+                "origin",
+                "sender",
+                "collect from"
+            )
+        )
+
+        // Drop-off is always detected second.
+        val dropoff = findPlaceAfterKeyword(
+            listOf(
+                "dropoff",
+                "drop off",
+                "drop-off",
+                "destination",
+                "to",
+                "receiver",
+                "deliver to",
+                "drop"
+            )
+        )
+
+        if (
+            pickup != null &&
+            dropoff != null &&
+            !pickup.equals(dropoff, true)
+        ) {
+            return "$pickup to $dropoff"
+        }
+
+        // Direct route pattern: FROM to TO.
         for ((rawFrom, cleanFrom) in normalizedPlaces) {
             for ((rawTo, cleanTo) in normalizedPlaces) {
                 if (cleanFrom.equals(cleanTo, true)) continue
@@ -246,6 +302,7 @@ class BookingNotificationListener : NotificationListenerService() {
             }
         }
 
+        // Saved route check.
         for (saved in getSavedRoutes()) {
             val parts = saved.route.split(" to ", ignoreCase = true)
 
@@ -263,6 +320,7 @@ class BookingNotificationListener : NotificationListenerService() {
             }
         }
 
+        // Fallback: first two different places by text order.
         val found = normalizedPlaces
             .mapNotNull { (raw, clean) ->
                 val index = lower.indexOf(raw.lowercase())
