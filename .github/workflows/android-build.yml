@@ -1,44 +1,40 @@
-name: Build DriverMate PH APK
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-on:
-  push:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+    <uses-permission android:name="android.permission.INTERNET" />
 
-permissions:
-  contents: read
+    <queries>
+        <package android:name="com.waze" />
+    </queries>
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    <application
+        android:allowBackup="true"
+        android:label="DriverMate PH"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
 
-    steps:
-      - name: Download repository manually
-        run: |
-          git clone https://github.com/${{ github.repository }}.git project
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
 
-      - name: Set up JDK
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk unzip wget
-          java -version
+        </activity>
 
-      - name: Install Gradle 8.7
-        run: |
-          wget https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          unzip gradle-8.7-bin.zip
-          ./gradle-8.7/bin/gradle -v
+        <service
+            android:name=".BookingNotificationListener"
+            android:label="DriverMate PH Booking Assistant"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
 
-      - name: Build debug APK
-        run: |
-          cd project
-          ../gradle-8.7/bin/gradle assembleDebug
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: DriverMatePH-debug-apk
-          path: project/app/build/outputs/apk/debug/*.apk
+        </service>
+
+    </application>
+
+</manifest>
