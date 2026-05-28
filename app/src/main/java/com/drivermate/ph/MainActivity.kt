@@ -1,872 +1,1050 @@
 package com.drivermate.ph
 
-import android.app.Activity
-import android.content.Intent
-import android.graphics.Color
-import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
-import android.provider.Settings
-import android.speech.tts.TextToSpeech
-import android.text.Editable
-import android.text.InputType
-import android.text.TextWatcher
-import android.view.Gravity
-import android.widget.*
-import java.util.Locale
+import android.app.Activityimport android.content.Intentimport android.graphics.Colorimport android.graphics.Typefaceimport android.net.Uriimport android.os.Bundleimport android.provider.Settingsimport android.speech.tts.TextToSpeechimport android.text.Editableimport android.text.InputTypeimport android.text.TextWatcherimport android.view.Gravityimport android.view.Viewimport android.widget.*import java.util.Localeimport kotlin.math.abs
 
 class MainActivity : Activity() {
 
-    private val prefs by lazy { getSharedPreferences("driver_mate_settings", MODE_PRIVATE) }
-    private var tts: TextToSpeech? = null
+private val prefs by lazy { getSharedPreferences("driver_mate_settings", MODE_PRIVATE) }
+private var tts: TextToSpeech? = null
 
-    private lateinit var content: LinearLayout
-    private lateinit var scrollView: ScrollView
-    private lateinit var routesContainer: LinearLayout
+private lateinit var content: LinearLayout
+private lateinit var scrollView: ScrollView
 
-    private val bg = Color.rgb(5, 12, 28)
-    private val card = Color.rgb(14, 27, 52)
-    private val card2 = Color.rgb(18, 39, 72)
-    private val green = Color.rgb(0, 220, 105)
-    private val red = Color.rgb(255, 80, 65)
-    private val disabled = Color.rgb(90, 110, 130)
-    private val white = Color.WHITE
-    private val muted = Color.rgb(175, 190, 210)
+private val green = Color.rgb(0, 130, 45)
+private val lightGreen = Color.rgb(235, 252, 240)
+private val bg = Color.rgb(247, 255, 249)
+private val dark = Color.rgb(20, 35, 25)
+private val gray = Color.rgb(95, 105, 100)
+private val orange = Color.rgb(235, 85, 35)
 
-    private val cavitePlaces = listOf(
-        "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City", "Dasmarinas",
-        "General Trias", "Imus", "Indang", "Kawit", "Magallanes Cavite",
-        "Maragondon", "Mendez", "Naic", "Noveleta", "Rosario", "Silang",
-        "Tagaytay", "Tanza", "Ternate", "Trece Martires"
-    )
+private val cavitePlaces = listOf(
+    "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
+    "Dasmarinas", "General Trias", "Imus", "Indang", "Kawit",
+    "Magallanes Cavite", "Maragondon", "Mendez", "Naic", "Noveleta",
+    "Rosario", "Silang", "Tagaytay", "Tanza", "Ternate", "Trece Martires"
+)
 
-    private val manilaPlaces = listOf(
-        "Manila", "Caloocan", "Las Pinas", "Makati", "Malabon", "Mandaluyong",
-        "Marikina", "Muntinlupa", "Navotas", "Paranaque", "Pasay", "Pasig",
-        "Pateros", "Quezon City", "San Juan", "Taguig", "Valenzuela",
-        "BGC", "Alabang"
-    )
+private val manilaPlaces = listOf(
+    "Manila", "Caloocan", "Las Pinas", "Makati", "Malabon",
+    "Mandaluyong", "Marikina", "Muntinlupa", "Navotas", "Paranaque",
+    "Pasay", "Pasig", "Pateros", "Quezon City", "San Juan",
+    "Taguig", "Valenzuela", "BGC", "Alabang"
+)
 
-    private val lagunaPlaces = listOf(
-        "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba", "Calauan",
-        "Cavinti", "Famy", "Kalayaan", "Liliw", "Los Banos", "Luisiana",
-        "Lumban", "Mabitac", "Magdalena", "Majayjay", "Nagcarlan", "Paete",
-        "Pagsanjan", "Pakil", "Pangil", "Pila", "Rizal Laguna", "San Pablo",
-        "San Pedro", "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
-        "Siniloan", "Victoria"
-    )
+private val lagunaPlaces = listOf(
+    "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba",
+    "Calauan", "Cavinti", "Famy", "Kalayaan", "Liliw",
+    "Los Banos", "Luisiana", "Lumban", "Mabitac", "Magdalena",
+    "Majayjay", "Nagcarlan", "Paete", "Pagsanjan", "Pakil",
+    "Pangil", "Pila", "Rizal Laguna", "San Pablo", "San Pedro",
+    "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
+    "Siniloan", "Victoria"
+)
 
-    private val batangasPlaces = listOf(
-        "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City", "Bauan",
-        "Calaca", "Calatagan", "Cuenca", "Ibaan", "Laurel", "Lemery", "Lian",
-        "Lipa", "Lobo", "Mabini", "Malvar", "Mataasnakahoy", "Nasugbu",
-        "Padre Garcia", "Rosario Batangas", "San Jose Batangas",
-        "San Juan Batangas", "San Luis Batangas", "San Nicolas", "San Pascual",
-        "Santa Teresita", "Santo Tomas Batangas", "Taal", "Talisay Batangas",
-        "Tanauan", "Taysan", "Tingloy", "Tuy"
-    )
+private val batangasPlaces = listOf(
+    "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City",
+    "Bauan", "Calaca", "Calatagan", "Cuenca", "Ibaan",
+    "Laurel", "Lemery", "Lian", "Lipa", "Lobo", "Mabini",
+    "Malvar", "Mataasnakahoy", "Nasugbu", "Padre Garcia",
+    "Rosario Batangas", "San Jose Batangas", "San Juan Batangas",
+    "San Luis Batangas", "San Nicolas", "San Pascual",
+    "Santa Teresita", "Santo Tomas Batangas", "Taal",
+    "Talisay Batangas", "Tanauan", "Taysan", "Tingloy", "Tuy"
+)
 
-    private val bulacanPlaces = listOf(
-        "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan", "Bustos",
-        "Calumpit", "Dona Remedios Trinidad", "Guiguinto", "Hagonoy",
-        "Malolos", "Marilao", "Meycauayan", "Norzagaray", "Obando",
-        "Pandi", "Paombong", "Plaridel", "Pulilan", "San Ildefonso",
-        "San Jose del Monte", "San Miguel", "San Rafael", "Santa Maria Bulacan"
-    )
+private val bulacanPlaces = listOf(
+    "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan",
+    "Bustos", "Calumpit", "Dona Remedios Trinidad", "Guiguinto",
+    "Hagonoy", "Malolos", "Marilao", "Meycauayan", "Norzagaray",
+    "Obando", "Pandi", "Paombong", "Plaridel", "Pulilan",
+    "San Ildefonso", "San Jose del Monte", "San Miguel",
+    "San Rafael", "Santa Maria Bulacan"
+)
 
-    private val pampangaPlaces = listOf(
-        "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba", "Floridablanca",
-        "Guagua", "Lubao", "Mabalacat", "Macabebe", "Magalang", "Masantol",
-        "Mexico", "Minalin", "Porac", "San Fernando Pampanga",
-        "San Luis Pampanga", "San Simon", "Santa Ana Pampanga", "Santa Rita",
-        "Santo Tomas Pampanga", "Sasmuan"
-    )
+private val pampangaPlaces = listOf(
+    "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba",
+    "Floridablanca", "Guagua", "Lubao", "Mabalacat", "Macabebe",
+    "Magalang", "Masantol", "Mexico", "Minalin", "Porac",
+    "San Fernando Pampanga", "San Luis Pampanga", "San Simon",
+    "Santa Ana Pampanga", "Santa Rita", "Santo Tomas Pampanga", "Sasmuan"
+)
 
-    private val allPlaces: List<String>
-        get() = (
-            cavitePlaces + manilaPlaces + lagunaPlaces + batangasPlaces +
-                bulacanPlaces + pampangaPlaces
-            ).distinct().sorted()
+private val allPlaces = (
+    cavitePlaces +
+        manilaPlaces +
+        lagunaPlaces +
+        batangasPlaces +
+        bulacanPlaces +
+        pampangaPlaces
+    ).distinct().sorted()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
 
-        tts = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale("en", "PH")
-                tts?.setSpeechRate(0.85f)
-                tts?.setPitch(1.03f)
+    tts = TextToSpeech(this) { status ->
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale("en", "PH"))
+            if (
+                result == TextToSpeech.LANG_MISSING_DATA ||
+                result == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                tts?.language = Locale.US
             }
+            tts?.setSpeechRate(0.88f)
+            tts?.setPitch(1.02f)
         }
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(bg)
-        }
-
-        scrollView = ScrollView(this).apply {
-            isFillViewport = true
-            setBackgroundColor(bg)
-            layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
-        }
-
-        content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-            setBackgroundColor(bg)
-        }
-
-        scrollView.addView(content)
-        root.addView(scrollView)
-        root.addView(bottomNav())
-
-        setContentView(root)
-        showHome()
     }
 
-    private fun showHome() {
-        clear()
-        addHeader()
-        addHero()
-        addFirstPriorityCard()
-        addVoiceStatusCard()
+    val root = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundColor(bg)
+        layoutParams = LinearLayout.LayoutParams(-1, -1)
     }
 
-    private fun addHeader() {
-        content.addView(TextView(this).apply {
-            text = "🚘 DriverMate PH"
-            textSize = 26f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-        })
-
-        content.addView(TextView(this).apply {
-            text = "Driver Assistant for Booking Alerts"
-            textSize = 14f
-            setTextColor(muted)
-            setPadding(0, 0, 0, dp(12))
-        })
+    scrollView = ScrollView(this).apply {
+        isFillViewport = true
+        setBackgroundColor(bg)
+        layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
     }
 
-    private fun addHero() {
-        val box = roundedBox(card, 24).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(22), dp(20), dp(22))
+    content = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(14), dp(10), dp(14), dp(10))
+        setBackgroundColor(bg)
+        layoutParams = LinearLayout.LayoutParams(-1, -2)
+        minimumHeight = resources.displayMetrics.heightPixels
+    }
+
+    scrollView.addView(content)
+    root.addView(scrollView)
+    root.addView(bottomNav())
+
+    setContentView(root)
+    showHome()
+}
+
+private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+private fun clear() {
+    content.removeAllViews()
+    scrollView.post { scrollView.scrollTo(0, 0) }
+}
+
+private fun showHome() {
+    clear()
+    addTopBar()
+    addHeroBanner()
+
+    addCategoryCard(
+        R.drawable.package_truck,
+        "Send Package",
+        "Deliver packages safely and quickly.",
+        listOf("Add package route", "Suggested Cavite package routes", "Test package voice", "Open Waze")
+    )
+
+    addCategoryCard(
+        R.drawable.city_taxi,
+        "Book Ride",
+        "Quick rides within Cavite and Manila.",
+        listOf("Search Cavite routes", "Search Manila-Cavite routes", "Add preferred ride route", "Test ride voice")
+    )
+
+    addCategoryCard(
+        R.drawable.intercity_car,
+        "Book Intercity Ride",
+        "Cavite, Manila, Laguna, Batangas, Bulacan, and Pampanga route alerts.",
+        listOf("Long-distance route suggestions", "Cavite to Manila routes", "Manila to Cavite routes", "Auto-open Waze setting")
+    )
+
+    addPreferredRoutesSection()
+    addControlSection()
+}
+
+private fun addTopBar() {
+    val top = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    top.addView(TextView(this).apply {
+        text = "☰"
+        textSize = 30f
+        setTextColor(green)
+        gravity = Gravity.CENTER
+    }, LinearLayout.LayoutParams(dp(48), dp(48)))
+
+    top.addView(TextView(this).apply {
+        text = "DriverMate PH"
+        textSize = 28f
+        gravity = Gravity.CENTER
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+    }, LinearLayout.LayoutParams(0, -2, 1f))
+
+    top.addView(TextView(this).apply {
+        text = "♧"
+        textSize = 30f
+        setTextColor(green)
+        gravity = Gravity.CENTER
+    }, LinearLayout.LayoutParams(dp(48), dp(48)))
+
+    content.addView(top)
+}
+
+private fun addHeroBanner() {
+    val frame = FrameLayout(this).apply {
+        layoutParams = LinearLayout.LayoutParams(-1, dp(260)).apply {
+            setMargins(0, dp(8), 0, dp(12))
         }
-
-        box.addView(TextView(this).apply {
-            text = "DRIVE SMARTER\nCHOOSE ROUTES FASTER"
-            textSize = 26f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD_ITALIC)
-        })
-
-        box.addView(TextView(this).apply {
-            text = "Main focus: manage preferred routes, add all routes, remove routes, and reset anytime."
-            textSize = 14f
-            setTextColor(muted)
-            setPadding(0, dp(10), 0, 0)
-        })
-
-        content.addView(box, marginParams(0, 0, 0, dp(14)))
     }
 
-    private fun addFirstPriorityCard() {
-        val route = getFirstPriorityRoute().ifBlank { "No first priority route set" }
+    frame.addView(ImageView(this).apply {
+        setImageResource(R.drawable.hero_banner)
+        scaleType = ImageView.ScaleType.CENTER_CROP
+    }, FrameLayout.LayoutParams(-1, -1))
 
-        val box = roundedBox(card2, 22).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
+    frame.addView(TextView(this).apply {
+        text = "YOUR RIDES\nYOUR WAY\nANYTIME,\nANYWHERE!"
+        textSize = 34f
+        setTextColor(Color.WHITE)
+        setTypeface(null, Typeface.BOLD)
+        setShadowLayer(8f, 2f, 2f, Color.rgb(20, 60, 30))
+        gravity = Gravity.CENTER
+    }, FrameLayout.LayoutParams(-1, -1))
 
-        box.addView(TextView(this).apply {
-            text = "⭐ First Priority Route"
-            textSize = 18f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-        })
+    content.addView(frame)
+}
 
-        box.addView(TextView(this).apply {
-            text = route
-            textSize = 20f
+private fun addCategoryCard(imageRes: Int, title: String, desc: String, options: List<String>) {
+    val card = whiteCard()
+
+    val header = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    header.addView(ImageView(this).apply {
+        setImageResource(imageRes)
+        scaleType = ImageView.ScaleType.FIT_CENTER
+    }, LinearLayout.LayoutParams(dp(95), dp(95)))
+
+    header.addView(LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(12), 0, 0, 0)
+
+        addView(TextView(this@MainActivity).apply {
+            text = title
+            textSize = 22f
             setTextColor(green)
             setTypeface(null, Typeface.BOLD)
-            setPadding(0, dp(10), 0, 0)
         })
 
-        content.addView(box, marginParams(0, 0, 0, dp(14)))
+        addView(TextView(this@MainActivity).apply {
+            text = desc
+            textSize = 14f
+            setTextColor(dark)
+        })
+    }, LinearLayout.LayoutParams(0, -2, 1f))
+
+    val arrow = TextView(this).apply {
+        text = "⌄"
+        textSize = 34f
+        setTextColor(green)
+        gravity = Gravity.CENTER
     }
 
-    private fun addVoiceStatusCard() {
-        val box = roundedBox(card, 22).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
+    header.addView(arrow, LinearLayout.LayoutParams(dp(44), dp(44)))
+    card.addView(header)
 
-        box.addView(TextView(this).apply {
-            text = "🎙️ Voice Alerts"
-            textSize = 18f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+    val dropdown = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        visibility = View.GONE
+        setPadding(0, dp(10), 0, 0)
+    }
 
-        box.addView(Switch(this).apply {
-            isChecked = prefs.getBoolean("voice_enabled", true)
-            setOnCheckedChangeListener { _, checked ->
-                prefs.edit().putBoolean("voice_enabled", checked).apply()
+    options.forEach { option ->
+        dropdown.addView(Button(this).apply {
+            text = option
+            textSize = 14f
+            setTextColor(green)
+            setBackgroundColor(Color.WHITE)
+            setOnClickListener {
+                when {
+                    option.contains("Search", true) ||
+                        option.contains("suggested", true) ||
+                        option.contains("routes", true) -> showRoutes()
+
+                    option.contains("Add", true) -> showCreateRoute()
+                    option.contains("Waze", true) -> openWaze("Imus, Cavite")
+                    option.contains("voice", true) -> speakTest()
+                }
             }
         })
-
-        content.addView(box)
     }
 
-    private fun showRoutes() {
-        clear()
-        addPageTitle("Preferred Routes")
+    card.addView(dropdown)
 
-        content.addView(greenButton("+ Manual Add Route") {
-            showCreateRoute()
-        }, marginParams(0, dp(6), 0, dp(8)))
+    header.setOnClickListener {
+        dropdown.visibility = if (dropdown.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        arrow.text = if (dropdown.visibility == View.VISIBLE) "⌃" else "⌄"
+    }
 
-        content.addView(greenButton("Other Suggested Routes") {
-            showOtherSuggestedRoutes()
-        }, marginParams(0, dp(4), 0, dp(8)))
+    content.addView(card)
+}
 
-        content.addView(greenButton("ADD ALL GENERAL ROUTES") {
-            val allRoutes = buildAreaRoutes(getGeneralLuzonPlaces(), getGeneralLuzonPlaces())
-            val addedCount = saveManyRoutesNoReset(allRoutes)
-            Toast.makeText(this, "$addedCount routes added", Toast.LENGTH_SHORT).show()
-            showRoutes()
-        }, marginParams(0, dp(4), 0, dp(8)))
+private fun addPreferredRoutesSection() {
+    val card = whiteCard()
+    val saved = getSavedRoutes()
 
-        content.addView(redButton("REMOVE ALL SAVED ROUTES") {
-            removeAllSavedRoutes()
-            Toast.makeText(this, "All saved routes removed", Toast.LENGTH_SHORT).show()
-            showRoutes()
-        }, marginParams(0, dp(4), 0, dp(8)))
+    card.addView(TextView(this).apply {
+        text = "Preferred Route Preview"
+        textSize = 18f
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+        setPadding(dp(4), 0, 0, dp(8))
+    })
 
-        content.addView(redButton("RESET ROUTES AND PRIORITY") {
-            resetRoutesAndPriority()
-            Toast.makeText(this, "Routes and priority reset", Toast.LENGTH_SHORT).show()
-            showRoutes()
-        }, marginParams(0, dp(4), 0, dp(14)))
+    card.addView(firstPriorityCard())
 
-        content.addView(TextView(this).apply {
-            text = "Saved Preferred Routes"
-            textSize = 18f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, dp(10), 0, dp(8))
+    card.addView(greenButton("Manual Add Preferred Route") {
+        showCreateRoute()
+    })
+
+    val dropdownTitle = TextView(this).apply {
+        text = "All saved preferred routes      ⌄"
+        textSize = 15f
+        setTextColor(dark)
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        setBackgroundColor(Color.WHITE)
+    }
+
+    val dropdownBox = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        visibility = View.GONE
+    }
+
+    if (saved.isEmpty()) {
+        dropdownBox.addView(TextView(this).apply {
+            text = "No preferred routes yet."
+            textSize = 14f
+            setTextColor(gray)
+            setPadding(dp(12), dp(8), dp(12), dp(8))
         })
-
-        routesContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+    } else {
+        saved.forEach {
+            dropdownBox.addView(routeCard(it))
         }
+    }
 
-        content.addView(routesContainer)
-
-        val saved = getSavedRoutes()
-
-        if (saved.isEmpty()) {
-            routesContainer.addView(TextView(this).apply {
-                text = "No saved routes yet. Add manually or use suggested routes."
-                textSize = 14f
-                setTextColor(muted)
-                setPadding(0, dp(10), 0, dp(10))
-            })
+    dropdownTitle.setOnClickListener {
+        dropdownBox.visibility = if (dropdownBox.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        dropdownTitle.text = if (dropdownBox.visibility == View.VISIBLE) {
+            "All saved preferred routes      ⌃"
         } else {
-            saved.forEach {
-                routesContainer.addView(routeCard(it))
-            }
+            "All saved preferred routes      ⌄"
         }
     }
 
-    private fun showOtherSuggestedRoutes() {
-        clear()
-        addPageTitle("Other Suggested Routes")
+    card.addView(dropdownTitle)
+    card.addView(dropdownBox)
+    content.addView(card)
+}
 
-        content.addView(TextView(this).apply {
-            text = "Choose a category. Added routes will show ADDED ✓."
-            textSize = 14f
-            setTextColor(muted)
-            setPadding(0, 0, 0, dp(12))
-        })
-
-        content.addView(suggestedRouteButton("Cavite Area") {
-            showSuggestedRoutes("Cavite Area", buildAreaRoutes(cavitePlaces, cavitePlaces))
-        })
-
-        content.addView(suggestedRouteButton("Cavite to Manila") {
-            showSuggestedRoutes("Cavite to Manila", buildAreaRoutes(cavitePlaces, manilaPlaces))
-        })
-
-        content.addView(suggestedRouteButton("Manila to Cavite") {
-            showSuggestedRoutes("Manila to Cavite", buildAreaRoutes(manilaPlaces, cavitePlaces))
-        })
-
-        content.addView(suggestedRouteButton("Cavite to Laguna") {
-            showSuggestedRoutes("Cavite to Laguna", buildAreaRoutes(cavitePlaces, lagunaPlaces))
-        })
-
-        content.addView(suggestedRouteButton("Laguna to Cavite") {
-            showSuggestedRoutes("Laguna to Cavite", buildAreaRoutes(lagunaPlaces, cavitePlaces))
-        })
-
-        content.addView(suggestedRouteButton("Manila to Laguna") {
-            showSuggestedRoutes("Manila to Laguna", buildAreaRoutes(manilaPlaces, lagunaPlaces))
-        })
-
-        content.addView(suggestedRouteButton("Cavite to Batangas") {
-            showSuggestedRoutes("Cavite to Batangas", buildAreaRoutes(cavitePlaces, batangasPlaces))
-        })
-
-        content.addView(suggestedRouteButton("Batangas to Cavite") {
-            showSuggestedRoutes("Batangas to Cavite", buildAreaRoutes(batangasPlaces, cavitePlaces))
-        })
-
-        content.addView(suggestedRouteButton("General Routes") {
-            showSuggestedRoutes("General Routes", buildAreaRoutes(getGeneralLuzonPlaces(), getGeneralLuzonPlaces()))
-        })
+private fun firstPriorityCard(): LinearLayout {
+    val selectedFirstPriority = getFirstPriorityRoute()
+    val displayRoute = if (selectedFirstPriority.isBlank()) {
+        "No first priority route selected"
+    } else {
+        selectedFirstPriority
     }
 
-    private fun showSuggestedRoutes(title: String, routes: List<String>) {
-        clear()
-        addPageTitle(title)
-
-        content.addView(TextView(this).apply {
-            text = "${routes.size} possible routes available"
-            textSize = 14f
-            setTextColor(muted)
-            setPadding(0, 0, 0, dp(10))
-        })
-
-        content.addView(greenButton("ADD ALL IN THIS CATEGORY") {
-            val before = scrollView.scrollY
-            val addedCount = saveManyRoutesNoReset(routes)
-            Toast.makeText(this, "$addedCount routes added", Toast.LENGTH_SHORT).show()
-
-            // Refresh page so buttons update to ADDED ✓
-            showSuggestedRoutes(title, routes)
-
-            scrollView.post {
-                scrollView.scrollTo(0, before)
-            }
-        }, marginParams(0, dp(4), 0, dp(8)))
-
-        content.addView(redButton("REMOVE ALL SAVED ROUTES") {
-            removeAllSavedRoutes()
-            Toast.makeText(this, "All saved routes removed", Toast.LENGTH_SHORT).show()
-
-            // Refresh page so buttons return to ADD
-            showSuggestedRoutes(title, routes)
-        }, marginParams(0, dp(4), 0, dp(12)))
-
-        routes.forEach { route ->
-            content.addView(suggestedRouteCard(route))
-        }
+    val row = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(12), dp(10), dp(12), dp(10))
+        setBackgroundColor(lightGreen)
     }
 
-    private fun suggestedRouteCard(route: String): LinearLayout {
-        val box = roundedBox(card, 18).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
+    row.addView(TextView(this).apply {
+        text = "🏅 MANUAL FIRST PRIORITY"
+        textSize = 16f
+        gravity = Gravity.CENTER
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+    })
+
+    row.addView(TextView(this).apply {
+        text = displayRoute
+        textSize = 18f
+        gravity = Gravity.CENTER
+        setTextColor(dark)
+        setTypeface(null, Typeface.BOLD)
+        setPadding(0, dp(8), 0, dp(8))
+    })
+
+    row.addView(TextView(this).apply {
+        text = "Only this manually selected route can auto-open Waze."
+        textSize = 13f
+        gravity = Gravity.CENTER
+        setTextColor(gray)
+    })
+
+    row.addView(Button(this).apply {
+        text = "CLEAR FIRST PRIORITY"
+        textSize = 12f
+        setTextColor(Color.WHITE)
+        setBackgroundColor(orange)
+        setOnClickListener {
+            clearFirstPriorityRoute()
+            Toast.makeText(this@MainActivity, "First priority cleared", Toast.LENGTH_SHORT).show()
+            showHome()
         }
+    })
 
-        box.addView(TextView(this).apply {
-            text = route
-            textSize = 15f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+    return row
+}
 
-        val alreadySaved = isRouteAlreadySaved(route)
-
-        val addButton = Button(this).apply {
-            text = if (alreadySaved) "ADDED ✓" else "ADD"
-            textSize = 12f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-            isEnabled = !alreadySaved
-            background = roundedDrawable(if (alreadySaved) disabled else green, 14)
-        }
-
-        addButton.setOnClickListener {
-            val before = scrollView.scrollY
-            val saved = saveFullRouteNoReset(route, "0", "manual")
-
-            addButton.text = "ADDED ✓"
-            addButton.isEnabled = false
-            addButton.background = roundedDrawable(disabled, 14)
-
-            Toast.makeText(
-                this,
-                if (saved) "Route added" else "Already saved",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            scrollView.post {
-                scrollView.scrollTo(0, before)
-            }
-        }
-
-        box.addView(addButton, LinearLayout.LayoutParams(dp(96), dp(46)))
-
-        return box.apply {
-            layoutParams = marginParams(0, dp(5), 0, dp(5))
-        }
+private fun addControlSection() {
+    val card = whiteCard().apply {
+        setPadding(dp(16), dp(18), dp(16), dp(18))
     }
 
-    private fun routeCard(route: RouteData): LinearLayout {
-        val box = roundedBox(card, 18).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-        }
+    card.addView(settingSwitchRow("📣", "Voice Message", "voice_enabled", true))
+    card.addView(settingSwitchRow("🗣️", "Speak All Routes", "speak_all_routes", false))
 
-        box.addView(TextView(this).apply {
-            text = "⭐ ${route.route}"
-            textSize = 17f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-        })
+    card.addView(TextView(this).apply {
+        text = "Enabled Booking Apps"
+        textSize = 22f
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+        setPadding(0, dp(22), 0, dp(10))
+    })
 
-        box.addView(TextView(this).apply {
-            text = "Fare: ₱${route.fare} • Distance: ${route.distance}"
-            textSize = 13f
-            setTextColor(muted)
-        })
+    card.addView(appSwitchRow("Lalamove", "enable_lalamove"))
+    card.addView(appSwitchRow("Grab", "enable_grab"))
+    card.addView(appSwitchRow("Transportify", "enable_transportify"))
+    card.addView(appSwitchRow("Move It", "enable_moveit"))
 
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(8), 0, 0)
-        }
+    content.addView(card)
 
-        row.addView(greenButton("SET FIRST") {
-            setFirstPriorityRoute(route.route)
-            Toast.makeText(this, "Set as first priority", Toast.LENGTH_SHORT).show()
-            showRoutes()
-        }, LinearLayout.LayoutParams(0, dp(48), 1f))
-
-        row.addView(redButton("REMOVE") {
-            removeSavedRoute(route.route)
-            Toast.makeText(this, "Route removed", Toast.LENGTH_SHORT).show()
-            showRoutes()
-        }, LinearLayout.LayoutParams(0, dp(48), 1f))
-
-        box.addView(row)
-
-        return box.apply {
-            layoutParams = marginParams(0, dp(6), 0, dp(6))
-        }
+    val wazeCard = whiteCard().apply {
+        setPadding(dp(16), dp(16), dp(16), dp(16))
     }
 
-    private fun showCreateRoute() {
-        clear()
-        addPageTitle("Manual Add Route")
+    val wazeRow = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
 
-        val fromInput = placeInput("Pickup place")
-        val fromList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    wazeRow.addView(ImageView(this).apply {
+        setImageResource(R.drawable.waze_icon)
+        scaleType = ImageView.ScaleType.FIT_CENTER
+    }, LinearLayout.LayoutParams(dp(90), dp(90)))
 
-        val toInput = placeInput("Drop-off place")
-        val toList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+    wazeRow.addView(TextView(this).apply {
+        text = "Auto Waze"
+        textSize = 22f
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+        setPadding(dp(18), 0, 0, 0)
+    }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val fareInput = placeInput("Fare e.g. 350").apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
+    wazeRow.addView(Switch(this).apply {
+        isChecked = prefs.getBoolean("auto_open_waze", true)
+        setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean("auto_open_waze", checked).apply()
         }
+    })
 
-        fun renderPlaceList(query: String, box: LinearLayout, input: EditText) {
-            box.removeAllViews()
-            val q = query.trim()
-            if (q.isBlank()) return
+    wazeCard.addView(wazeRow)
+    content.addView(wazeCard)
+}
 
-            allPlaces.filter { it.startsWith(q, true) }.take(80).forEach { place ->
-                box.addView(TextView(this).apply {
-                    text = place
-                    textSize = 16f
-                    setTextColor(white)
-                    setPadding(dp(14), dp(10), dp(14), dp(10))
-                    background = roundedDrawable(card2, 14)
-                    setOnClickListener {
-                        input.setText(place)
-                        input.setSelection(input.text.length)
-                        box.removeAllViews()
-                    }
-                }, marginParams(0, dp(4), 0, dp(4)))
-            }
-        }
+private fun settingSwitchRow(icon: String, label: String, key: String, defaultValue: Boolean): LinearLayout {
+    return LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(10), 0, dp(18))
 
-        fromInput.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) = renderPlaceList(s.toString(), fromList, fromInput)
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
+        addView(TextView(this@MainActivity).apply {
+            text = icon
+            textSize = 38f
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(dp(78), dp(70)))
 
-        toInput.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) = renderPlaceList(s.toString(), toList, toInput)
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
-
-        content.addView(fromInput, marginParams(0, dp(8), 0, dp(6)))
-        content.addView(fromList)
-        content.addView(toInput, marginParams(0, dp(8), 0, dp(6)))
-        content.addView(toList)
-        content.addView(fareInput, marginParams(0, dp(8), 0, dp(12)))
-
-        content.addView(greenButton("SAVE PREFERRED ROUTE") {
-            val from = normalizePlaceName(fromInput.text.toString())
-            val to = normalizePlaceName(toInput.text.toString())
-            val fare = fareInput.text.toString().ifBlank { "0" }
-
-            if (from.isBlank() || to.isBlank()) {
-                Toast.makeText(this, "Enter pickup and drop-off", Toast.LENGTH_SHORT).show()
-                return@greenButton
-            }
-
-            val saved = saveFullRouteNoReset("$from to $to", fare, "manual")
-            Toast.makeText(this, if (saved) "Route saved" else "Already saved", Toast.LENGTH_SHORT).show()
-            showRoutes()
-        })
-    }
-
-    private fun showApps() {
-        clear()
-        addPageTitle("App Monitoring")
-
-        content.addView(appSwitch("Lalamove", "enable_lalamove"))
-        content.addView(appSwitch("Grab", "enable_grab"))
-        content.addView(appSwitch("Transportify", "enable_transportify"))
-        content.addView(appSwitch("Move It", "enable_moveit"))
-    }
-
-    private fun showSettings() {
-        clear()
-        addPageTitle("Voice Settings")
-
-        content.addView(settingSwitch("Voice Alerts", "voice_enabled", true))
-        content.addView(settingSwitch("Speak All Routes", "speak_all_routes", false))
-        content.addView(settingSwitch("Auto Open Waze", "auto_open_waze", true))
-
-        content.addView(greenButton("Test Voice") {
-            tts?.speak(
-                "Preferred booking detected. General Trias to Imus. Recommended. Take this booking.",
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "test_voice"
-            )
-        }, marginParams(0, dp(8), 0, dp(8)))
-
-        content.addView(greenButton("Open Notification Access") {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        })
-    }
-
-    private fun appSwitch(name: String, key: String): LinearLayout {
-        return settingSwitch(name, key, true)
-    }
-
-    private fun settingSwitch(label: String, key: String, defaultValue: Boolean): LinearLayout {
-        val row = roundedBox(card, 18).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-        }
-
-        row.addView(TextView(this).apply {
+        addView(TextView(this@MainActivity).apply {
             text = label
-            textSize = 17f
-            setTextColor(white)
+            textSize = 22f
+            setTextColor(green)
             setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        row.addView(Switch(this).apply {
+        addView(Switch(this@MainActivity).apply {
             isChecked = prefs.getBoolean(key, defaultValue)
             setOnCheckedChangeListener { _, checked ->
                 prefs.edit().putBoolean(key, checked).apply()
             }
         })
-
-        return row.apply {
-            layoutParams = marginParams(0, dp(6), 0, dp(6))
-        }
     }
+}
 
-    private fun buildAreaRoutes(fromList: List<String>, toList: List<String>): List<String> {
-        return fromList.distinct().flatMap { from ->
-            toList.distinct().mapNotNull { to ->
-                val cleanFrom = normalizePlaceName(from)
-                val cleanTo = normalizePlaceName(to)
+private fun appSwitchRow(label: String, key: String): LinearLayout {
+    return LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(8), 0, dp(8))
 
-                if (!cleanFrom.equals(cleanTo, true)) {
-                    "$cleanFrom to $cleanTo"
-                } else null
-            }
-        }.distinct().sorted()
-    }
+        addView(TextView(this@MainActivity).apply {
+            text = ""
+        }, LinearLayout.LayoutParams(dp(78), dp(54)))
 
-    private fun getGeneralLuzonPlaces(): List<String> {
-        return (
-            cavitePlaces + manilaPlaces + lagunaPlaces + batangasPlaces +
-                bulacanPlaces + pampangaPlaces
-            ).distinct().sorted()
-    }
-
-    private fun isRouteAlreadySaved(route: String): Boolean {
-        val current = prefs.getString("saved_full_routes", "") ?: ""
-
-        return current.split("|").any {
-            val p = it.split("~")
-            p.isNotEmpty() && p[0].equals(route.trim(), true)
-        }
-    }
-
-    private fun saveManyRoutesNoReset(routes: List<String>): Int {
-        val current = prefs.getString("saved_full_routes", "") ?: ""
-
-        val existingRoutes = current.split("|")
-            .mapNotNull {
-                val p = it.split("~")
-                if (p.isNotEmpty()) p[0].lowercase() else null
-            }
-            .toMutableSet()
-
-        val newItems = mutableListOf<String>()
-        var addedCount = 0
-
-        routes.forEach { route ->
-            val cleanRoute = route.trim()
-            if (cleanRoute.isNotBlank() && !existingRoutes.contains(cleanRoute.lowercase())) {
-                newItems.add("$cleanRoute~0~manual")
-                existingRoutes.add(cleanRoute.lowercase())
-                addedCount++
-            }
-        }
-
-        val updated = when {
-            current.isBlank() -> newItems.joinToString("|")
-            newItems.isEmpty() -> current
-            else -> current + "|" + newItems.joinToString("|")
-        }
-
-        prefs.edit().putString("saved_full_routes", updated).apply()
-        return addedCount
-    }
-
-    private fun saveFullRouteNoReset(route: String, fare: String, distance: String): Boolean {
-        val current = prefs.getString("saved_full_routes", "") ?: ""
-
-        val exists = current.split("|").any {
-            val p = it.split("~")
-            p.isNotEmpty() && p[0].equals(route, true)
-        }
-
-        if (exists) return false
-
-        val newItem = "$route~$fare~$distance"
-        val updated = if (current.isBlank()) newItem else "$current|$newItem"
-
-        prefs.edit().putString("saved_full_routes", updated).apply()
-        return true
-    }
-
-    private fun getSavedRoutes(): List<RouteData> {
-        val raw = prefs.getString("saved_full_routes", "") ?: ""
-        if (raw.isBlank()) return emptyList()
-
-        return raw.split("|").mapNotNull {
-            val p = it.split("~")
-            if (p.size >= 3) RouteData(p[0], p[1], p[2]) else null
-        }
-    }
-
-    private fun removeSavedRoute(route: String) {
-        val current = prefs.getString("saved_full_routes", "") ?: ""
-
-        val updated = current.split("|")
-            .filter {
-                val p = it.split("~")
-                p.isNotEmpty() && !p[0].equals(route, true)
-            }
-            .joinToString("|")
-
-        prefs.edit().putString("saved_full_routes", updated).apply()
-    }
-
-    private fun removeAllSavedRoutes() {
-        prefs.edit().remove("saved_full_routes").apply()
-    }
-
-    private fun resetRoutesAndPriority() {
-        prefs.edit()
-            .remove("saved_full_routes")
-            .remove("first_priority_route")
-            .apply()
-    }
-
-    private fun getFirstPriorityRoute(): String {
-        return prefs.getString("first_priority_route", "") ?: ""
-    }
-
-    private fun setFirstPriorityRoute(route: String) {
-        prefs.edit().putString("first_priority_route", route).apply()
-    }
-
-    private fun normalizePlaceName(place: String): String {
-        return when (place.trim().lowercase()) {
-            "gen trias" -> "General Trias"
-            "dasma" -> "Dasmarinas"
-            "qc" -> "Quezon City"
-            "bonifacio global city" -> "BGC"
-            else -> place.trim()
-        }
-    }
-
-    private fun addPageTitle(title: String) {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        row.addView(TextView(this).apply {
-            text = "←"
-            textSize = 28f
-            setTextColor(white)
-            gravity = Gravity.CENTER
-            setOnClickListener { showHome() }
-        }, LinearLayout.LayoutParams(dp(44), dp(44)))
-
-        row.addView(TextView(this).apply {
-            text = title
-            textSize = 22f
-            setTextColor(white)
+        addView(TextView(this@MainActivity).apply {
+            text = label
+            textSize = 20f
+            setTextColor(green)
             setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        row.addView(Space(this), LinearLayout.LayoutParams(dp(44), dp(44)))
-        content.addView(row, marginParams(0, 0, 0, dp(12)))
+        addView(Switch(this@MainActivity).apply {
+            isChecked = prefs.getBoolean(key, true)
+            setOnCheckedChangeListener { _, checked ->
+                prefs.edit().putBoolean(key, checked).apply()
+                Toast.makeText(
+                    this@MainActivity,
+                    "$label ${if (checked) "ON" else "OFF"}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
     }
+}
 
-    private fun bottomNav(): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(8), dp(8), dp(8), dp(8))
-            background = roundedDrawable(Color.rgb(9, 20, 42), 24)
-
-            addView(navButton("⌂", "Home") { showHome() })
-            addView(navButton("☆", "Routes") { showRoutes() })
-            addView(navButton("▦", "Apps") { showApps() })
-            addView(navButton("⚙", "Settings") { showSettings() })
+private fun whiteCard(): LinearLayout {
+    return LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(12), dp(12), dp(12), dp(12))
+        setBackgroundColor(Color.WHITE)
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            setMargins(0, dp(6), 0, dp(8))
         }
     }
+}
 
-    private fun navButton(icon: String, label: String, action: () -> Unit): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+private fun bottomNav(): LinearLayout {
+    return LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER
+        setPadding(dp(8), dp(8), dp(8), dp(8))
+        setBackgroundColor(Color.WHITE)
+        layoutParams = LinearLayout.LayoutParams(-1, -2)
 
-            addView(TextView(this@MainActivity).apply {
-                text = icon
-                textSize = 22f
-                setTextColor(green)
-                gravity = Gravity.CENTER
-            })
+        addView(navButton("🏠\nHome") { showHome() })
+        addView(navButton("📍\nRoutes") { showRoutes() })
+        addView(navButton("🔔\nAlerts") { showAlertDemo() })
+        addView(navButton("⚙️\nSettings") { showSettings() })
+    }
+}
 
-            addView(TextView(this@MainActivity).apply {
-                text = label
-                textSize = 11f
-                setTextColor(muted)
-                gravity = Gravity.CENTER
-            })
+private fun navButton(text: String, action: () -> Unit): TextView {
+    return TextView(this).apply {
+        this.text = text
+        textSize = 12f
+        gravity = Gravity.CENTER
+        setTextColor(green)
+        setPadding(dp(6), dp(6), dp(6), dp(6))
+        setOnClickListener { action() }
+        layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+    }
+}
 
-            setOnClickListener { action() }
-        }
+private fun speakTest() {
+    if (!prefs.getBoolean("voice_enabled", true)) {
+        Toast.makeText(this, "Voice Message is OFF", Toast.LENGTH_SHORT).show()
+        return
     }
 
-    private fun placeInput(hintText: String): EditText {
-        return EditText(this).apply {
-            hint = hintText
-            setHintTextColor(muted)
-            setTextColor(white)
-            inputType = InputType.TYPE_CLASS_TEXT
-            background = roundedDrawable(card, 18)
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-        }
-    }
-
-    private fun suggestedRouteButton(title: String, action: () -> Unit): Button {
-        return Button(this).apply {
-            text = title
-            textSize = 14f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-            background = roundedDrawable(card2, 18)
-            setOnClickListener { action() }
-        }.apply {
-            layoutParams = marginParams(0, dp(5), 0, dp(5))
-        }
-    }
-
-    private fun greenButton(text: String, action: () -> Unit): Button {
-        return Button(this).apply {
-            this.text = text
-            textSize = 14f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-            background = roundedDrawable(green, 18)
-            setOnClickListener { action() }
-        }
-    }
-
-    private fun redButton(text: String, action: () -> Unit): Button {
-        return Button(this).apply {
-            this.text = text
-            textSize = 14f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-            background = roundedDrawable(red, 18)
-            setOnClickListener { action() }
-        }
-    }
-
-    private fun roundedBox(color: Int, radius: Int): LinearLayout {
-        return LinearLayout(this).apply {
-            background = roundedDrawable(color, radius)
-        }
-    }
-
-    private fun roundedDrawable(color: Int, radius: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = dp(radius).toFloat()
-        }
-    }
-
-    private fun marginParams(l: Int, t: Int, r: Int, b: Int): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(-1, -2).apply {
-            setMargins(l, t, r, b)
-        }
-    }
-
-    private fun clear() {
-        content.removeAllViews()
-        scrollView.post { scrollView.scrollTo(0, 0) }
-    }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-    data class RouteData(
-        val route: String,
-        val fare: String,
-        val distance: String
+    tts?.speak(
+        "Priority booking. Tanza to Imus. Fare 200 pesos. Distance not detected.",
+        TextToSpeech.QUEUE_FLUSH,
+        null,
+        "test_voice_${System.currentTimeMillis()}"
     )
+}
 
-    override fun onDestroy() {
-        tts?.stop()
-        tts?.shutdown()
-        super.onDestroy()
+private fun showRoutes() {
+    clear()
+
+    content.addView(TextView(this).apply {
+        text = "Preferred Routes"
+        textSize = 26f
+        gravity = Gravity.CENTER
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+    })
+
+    content.addView(greenButton("Manual Add Preferred Route") {
+        showCreateRoute()
+    })
+
+    val search = EditText(this).apply {
+        hint = "Search suggested routes..."
+        inputType = InputType.TYPE_CLASS_TEXT
+        setSingleLine(true)
     }
+
+    content.addView(search)
+
+    val listBox = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(0, dp(12), 0, dp(24))
+    }
+
+    content.addView(listBox)
+
+    fun render(query: String) {
+        listBox.removeAllViews()
+
+        val cleanQuery = query.trim()
+
+        val routes = if (cleanQuery.isBlank()) {
+            generateVisibleRoutes().take(100)
+        } else {
+            generateAllRoutes()
+                .filter { it.route.contains(cleanQuery, true) }
+                .take(100)
+        }
+
+        routes.forEach { route ->
+            listBox.addView(suggestedRouteCard(route))
+        }
+    }
+
+    search.addTextChangedListener(object : TextWatcher {
+        override fun afterTextChanged(s: Editable?) = render(s.toString())
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+    })
+
+    render("")
+}
+
+private fun suggestedRouteCard(route: RouteData): LinearLayout {
+    val c = whiteCard()
+
+    val row = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+
+    row.addView(LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+
+        addView(TextView(this@MainActivity).apply {
+            text = "📍 ${route.route}"
+            textSize = 16f
+            setTextColor(dark)
+            setTypeface(null, Typeface.BOLD)
+        })
+
+        addView(TextView(this@MainActivity).apply {
+            text = "Suggested fare: ₱${route.fare} • Suggested distance only"
+            textSize = 13f
+            setTextColor(if (isSaved(route.route)) green else orange)
+        })
+    }, LinearLayout.LayoutParams(0, -2, 1f))
+
+    row.addView(Button(this).apply {
+        text = if (isSaved(route.route)) "SAVED" else "ADD"
+        textSize = 12f
+        setTextColor(Color.WHITE)
+        setBackgroundColor(if (isSaved(route.route)) gray else green)
+        isEnabled = !isSaved(route.route)
+        setOnClickListener {
+            saveFullRoute(route.route, route.fare, "manual only")
+            Toast.makeText(this@MainActivity, "Preferred route added", Toast.LENGTH_SHORT).show()
+            showRoutes()
+        }
+    }, LinearLayout.LayoutParams(dp(90), -2))
+
+    c.addView(row)
+    return c
+}
+
+private fun showCreateRoute() {
+    clear()
+
+    content.addView(TextView(this).apply {
+        text = "Manual Add Preferred Route"
+        textSize = 26f
+        gravity = Gravity.CENTER
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+    })
+
+    val selectedFrom = arrayOf("")
+    val selectedTo = arrayOf("")
+
+    val fromInput = EditText(this).apply {
+        hint = "Type pickup place e.g. Tanza"
+        inputType = InputType.TYPE_CLASS_TEXT
+        setSingleLine(true)
+    }
+
+    val fromList = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+
+    val toInput = EditText(this).apply {
+        hint = "Type dropoff place e.g. Imus"
+        inputType = InputType.TYPE_CLASS_TEXT
+        setSingleLine(true)
+    }
+
+    val toList = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+
+    fun renderPlaceList(query: String, box: LinearLayout, input: EditText, target: Array<String>) {
+        box.removeAllViews()
+
+        val q = query.trim()
+        if (q.isBlank()) return
+
+        val results = allPlaces
+            .filter { it.startsWith(q, true) }
+            .take(30)
+
+        results.forEach { place ->
+            box.addView(TextView(this).apply {
+                text = place
+                textSize = 16f
+                setTextColor(dark)
+                setPadding(dp(12), dp(8), dp(12), dp(8))
+                setBackgroundColor(Color.WHITE)
+                setOnClickListener {
+                    target[0] = place
+                    input.setText(place)
+                    input.setSelection(input.text.length)
+                    box.removeAllViews()
+                }
+            })
+        }
+    }
+
+    fromInput.addTextChangedListener(object : TextWatcher {
+        override fun afterTextChanged(s: Editable?) {
+            selectedFrom[0] = s.toString()
+            renderPlaceList(s.toString(), fromList, fromInput, selectedFrom)
+        }
+
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+    })
+
+    toInput.addTextChangedListener(object : TextWatcher {
+        override fun afterTextChanged(s: Editable?) {
+            selectedTo[0] = s.toString()
+            renderPlaceList(s.toString(), toList, toInput, selectedTo)
+        }
+
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+    })
+
+    val fare = EditText(this).apply {
+        hint = "Minimum fare example: 200"
+        inputType = InputType.TYPE_CLASS_NUMBER
+    }
+
+    val distance = EditText(this).apply {
+        hint = "Optional distance note example: manual only"
+        inputType = InputType.TYPE_CLASS_TEXT
+    }
+
+    content.addView(TextView(this).apply { text = "From / Pickup" })
+    content.addView(fromInput)
+    content.addView(fromList)
+
+    content.addView(TextView(this).apply { text = "To / Dropoff" })
+    content.addView(toInput)
+    content.addView(toList)
+
+    content.addView(fare)
+    content.addView(distance)
+
+    content.addView(greenButton("Add Preferred Route") {
+        val fromValue = selectedFrom[0].trim()
+        val toValue = selectedTo[0].trim()
+
+        if (fromValue.isBlank() || toValue.isBlank()) {
+            Toast.makeText(this, "Please enter pickup and dropoff", Toast.LENGTH_SHORT).show()
+            return@greenButton
+        }
+
+        val route = "$fromValue to $toValue"
+        val fareValue = fare.text.toString().ifBlank { "0" }
+        val distanceValue = distance.text.toString().ifBlank { "manual only" }
+
+        saveFullRoute(route, fareValue, distanceValue)
+        Toast.makeText(this, "Preferred route added", Toast.LENGTH_SHORT).show()
+        showRoutes()
+    })
+}
+
+private fun showAlertDemo() {
+    clear()
+    addTopBar()
+    addHeroBanner()
+    content.addView(firstPriorityCard())
+    content.addView(greenButton("Test Voice Alert") { speakTest() })
+    content.addView(greenButton("Open Waze") { openWaze("Imus, Cavite") })
+}
+
+private fun showSettings() {
+    clear()
+
+    content.addView(TextView(this).apply {
+        text = "Settings"
+        textSize = 30f
+        gravity = Gravity.CENTER
+        setTextColor(green)
+        setTypeface(null, Typeface.BOLD)
+    })
+
+    addControlSection()
+
+    content.addView(greenButton("Notification Access") {
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+    })
+
+    content.addView(greenButton("Test Voice") { speakTest() })
+    content.addView(greenButton("Manage Routes") { showRoutes() })
+
+    content.addView(TextView(this).apply {
+        text = "\nVersion 1.4.3\nDriverMate PH"
+        textSize = 14f
+        gravity = Gravity.CENTER
+        setTextColor(gray)
+    })
+}
+
+private fun greenButton(text: String, action: () -> Unit): Button {
+    return Button(this).apply {
+        this.text = text
+        textSize = 15f
+        setTextColor(Color.WHITE)
+        setBackgroundColor(green)
+        setOnClickListener { action() }
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply {
+            setMargins(0, dp(8), 0, dp(8))
+        }
+    }
+}
+
+private fun routeCard(route: RouteData): LinearLayout {
+    val c = whiteCard()
+    val firstPriority = getFirstPriorityRoute()
+    val isFirstPriority = firstPriority.equals(route.route, true)
+
+    val row = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+    }
+
+    row.addView(TextView(this).apply {
+        text = if (isFirstPriority) "🏅 ${route.route}" else "📍 ${route.route}"
+        textSize = 16f
+        setTextColor(dark)
+        setTypeface(null, Typeface.BOLD)
+    })
+
+    row.addView(TextView(this).apply {
+        text = "Fare: ₱${route.fare}     •     Distance: ${route.distance}"
+        textSize = 14f
+        setTextColor(green)
+    })
+
+    val buttons = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(8), 0, 0)
+    }
+
+    buttons.addView(Button(this).apply {
+        text = if (isFirstPriority) "FIRST PRIORITY" else "SET FIRST"
+        textSize = 11f
+        setTextColor(Color.WHITE)
+        setBackgroundColor(if (isFirstPriority) gray else green)
+        isEnabled = !isFirstPriority
+        setOnClickListener {
+            setFirstPriorityRoute(route.route)
+            Toast.makeText(this@MainActivity, "Set as first priority", Toast.LENGTH_SHORT).show()
+            showHome()
+        }
+    }, LinearLayout.LayoutParams(0, -2, 1f))
+
+    buttons.addView(Button(this).apply {
+        text = "REMOVE"
+        textSize = 11f
+        setTextColor(Color.WHITE)
+        setBackgroundColor(orange)
+        setOnClickListener {
+            removeSavedRoute(route.route)
+
+            if (getFirstPriorityRoute().equals(route.route, true)) {
+                clearFirstPriorityRoute()
+            }
+
+            Toast.makeText(this@MainActivity, "Preferred route removed", Toast.LENGTH_SHORT).show()
+            showHome()
+        }
+    }, LinearLayout.LayoutParams(0, -2, 1f))
+
+    row.addView(buttons)
+    c.addView(row)
+
+    return c
+}
+
+private fun generateVisibleRoutes(): List<RouteData> {
+    val list = mutableListOf<RouteData>()
+
+    for (from in cavitePlaces) {
+        for (to in cavitePlaces) {
+            list.add(makeRoute(from, to))
+        }
+    }
+
+    for (from in cavitePlaces) {
+        for (to in manilaPlaces) {
+            list.add(makeRoute(from, to))
+            list.add(makeRoute(to, from))
+        }
+    }
+
+    return list.shuffled()
+}
+
+private fun generateAllRoutes(): List<RouteData> {
+    val list = mutableListOf<RouteData>()
+    val searchablePlaces = allPlaces.distinct()
+
+    for (from in searchablePlaces) {
+        for (to in searchablePlaces) {
+            list.add(makeRoute(from, to))
+        }
+    }
+
+    return list.shuffled()
+}
+
+private fun makeRoute(from: String, to: String): RouteData {
+    val distance = estimateDistance(from, to)
+    val fare = estimateFare(distance)
+    return RouteData("$from to $to", fare.toString(), "suggested only")
+}
+
+private fun estimateDistance(from: String, to: String): Int {
+    val a = abs(from.hashCode() % 35)
+    val b = abs(to.hashCode() % 35)
+    val base = abs(a - b) + 8
+    val intercity =
+        lagunaPlaces.contains(from) || lagunaPlaces.contains(to) ||
+            batangasPlaces.contains(from) || batangasPlaces.contains(to) ||
+            bulacanPlaces.contains(from) || bulacanPlaces.contains(to) ||
+            pampangaPlaces.contains(from) || pampangaPlaces.contains(to)
+
+    val manilaRoute = manilaPlaces.contains(from) || manilaPlaces.contains(to)
+
+    return when {
+        intercity -> base + 45
+        manilaRoute -> base + 18
+        else -> base
+    }
+}
+
+private fun estimateFare(distance: Int): Int {
+    return ((distance * 12) + 80).coerceAtLeast(150)
+}
+
+private fun saveFullRoute(route: String, fare: String, distance: String) {
+    val current = prefs.getString("saved_full_routes", "") ?: ""
+    val newItem = "$route~$fare~$distance"
+
+    if (current.lowercase().contains(route.lowercase())) {
+        Toast.makeText(this, "Route already saved", Toast.LENGTH_SHORT).show()
+        return
+    }
+
+    val updated = if (current.isBlank()) newItem else "$current|$newItem"
+    prefs.edit().putString("saved_full_routes", updated).apply()
+}
+
+private fun removeSavedRoute(route: String) {
+    val current = prefs.getString("saved_full_routes", "") ?: ""
+
+    val updated = current.split("|")
+        .filter { item ->
+            val parts = item.split("~")
+            parts.isNotEmpty() && !parts[0].equals(route, true)
+        }
+        .joinToString("|")
+
+    prefs.edit().putString("saved_full_routes", updated).apply()
+}
+
+private fun getSavedRoutes(): List<RouteData> {
+    val raw = prefs.getString("saved_full_routes", "") ?: ""
+    if (raw.isBlank()) return emptyList()
+
+    return raw.split("|").mapNotNull {
+        val p = it.split("~")
+        if (p.size >= 3) RouteData(p[0], p[1], p[2]) else null
+    }
+}
+
+private fun isSaved(route: String): Boolean {
+    return getSavedRoutes().any { it.route.equals(route, true) }
+}
+
+private fun getFirstPriorityRoute(): String {
+    return prefs.getString("first_priority_route", "") ?: ""
+}
+
+private fun setFirstPriorityRoute(route: String) {
+    prefs.edit().putString("first_priority_route", route).apply()
+}
+
+private fun clearFirstPriorityRoute() {
+    prefs.edit().remove("first_priority_route").apply()
+}
+
+private fun openWaze(destination: String) {
+    val encoded = Uri.encode(destination)
+    val uri = Uri.parse("waze://?q=$encoded&navigate=yes")
+
+    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    try {
+        startActivity(intent)
+    } catch (e: Exception) {
+        startActivity(
+            Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")
+            )
+        )
+    }
+}
+
+data class RouteData(
+    val route: String,
+    val fare: String,
+    val distance: String
+)
+
+override fun onDestroy() {
+    tts?.stop()
+    tts?.shutdown()
+    super.onDestroy()
 }
