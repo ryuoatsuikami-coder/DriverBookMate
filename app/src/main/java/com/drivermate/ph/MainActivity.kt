@@ -21,6 +21,9 @@ class MainActivity : Activity() {
     private lateinit var content: LinearLayout
     private lateinit var scrollView: ScrollView
 
+    private var voiceIsOn = true
+    private var isTestingVoice = false
+
     private val blue = Color.rgb(0, 122, 255)
     private val green = Color.rgb(32, 190, 95)
     private val red = Color.rgb(230, 35, 35)
@@ -28,7 +31,6 @@ class MainActivity : Activity() {
     private val cardStroke = Color.rgb(220, 230, 245)
     private val dark = Color.rgb(20, 20, 25)
     private val gray = Color.rgb(120, 120, 130)
-    private val lightGray = Color.rgb(245, 247, 250)
 
     private val savedRoutes = mutableListOf(
         "General Trias → Bacoor",
@@ -45,7 +47,6 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setupVoice()
         setupLayout()
         showHome()
@@ -150,14 +151,22 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
 
             addView(TextView(this@MainActivity).apply {
-                text = "Voice Assistant Active"
+                text = if (prefs.getBoolean("voice_enabled", true)) {
+                    "Voice Assistant Active"
+                } else {
+                    "Voice Assistant Off"
+                }
                 textSize = 15f
-                setTextColor(green)
+                setTextColor(if (prefs.getBoolean("voice_enabled", true)) green else red)
                 setTypeface(null, Typeface.BOLD)
             })
 
             addView(TextView(this@MainActivity).apply {
-                text = "Listening for bookings from your enabled apps"
+                text = if (prefs.getBoolean("voice_enabled", true)) {
+                    "Listening for bookings from your enabled apps"
+                } else {
+                    "Tap Turn On to listen for bookings again"
+                }
                 textSize = 13f
                 setTextColor(gray)
             })
@@ -167,14 +176,24 @@ class MainActivity : Activity() {
     }
 
     private fun heroCard() {
+        voiceIsOn = prefs.getBoolean("voice_enabled", true)
+
         val card = cardBox().apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(26), dp(26), dp(26), dp(20))
-            setBackgroundColor(Color.rgb(232, 244, 255))
+            setPadding(dp(26), dp(26), dp(26), dp(26))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(232, 244, 255))
+                cornerRadius = dp(14).toFloat()
+                setStroke(1, cardStroke)
+            }
         }
 
         card.addView(TextView(this).apply {
-            text = "DriverMate PH\nis active"
+            text = if (voiceIsOn) {
+                "DriverMate PH\nis active"
+            } else {
+                "DriverMate PH\nis off"
+            }
             textSize = 25f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
@@ -185,14 +204,55 @@ class MainActivity : Activity() {
             setPadding(0, dp(28), 0, 0)
         }
 
-        buttons.addView(outlineButton("🔊  Test Voice") {
-            speak("Voice assistant is active. Booking alerts are ready.")
-        }, LinearLayout.LayoutParams(0, dp(46), 1f))
+        val testButton = Button(this).apply {
+            text = if (isTestingVoice) "🔊  SPEAKING..." else "🔊  TEST VOICE"
+            textSize = 14f
+            setTextColor(if (isTestingVoice) Color.WHITE else blue)
+            setTypeface(null, Typeface.BOLD)
+            setBackgroundColor(if (isTestingVoice) blue else Color.WHITE)
 
-        buttons.addView(blueButton("🔇  Turn Off") {
-            prefs.edit().putBoolean("voice_enabled", false).apply()
-            Toast.makeText(this, "Voice turned off", Toast.LENGTH_SHORT).show()
-        }, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+            setOnClickListener {
+                if (!prefs.getBoolean("voice_enabled", true)) {
+                    Toast.makeText(this@MainActivity, "Turn on voice first", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                isTestingVoice = true
+                showHome()
+
+                speak("Voice assistant is active. Booking alerts are ready.")
+
+                scrollView.postDelayed({
+                    isTestingVoice = false
+                    showHome()
+                }, 2800)
+            }
+        }
+
+        val powerButton = Button(this).apply {
+            text = if (voiceIsOn) "🔇  TURN OFF" else "🔊  TURN ON"
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            setTypeface(null, Typeface.BOLD)
+            setBackgroundColor(if (voiceIsOn) green else red)
+
+            setOnClickListener {
+                voiceIsOn = !voiceIsOn
+                prefs.edit().putBoolean("voice_enabled", voiceIsOn).apply()
+
+                Toast.makeText(
+                    this@MainActivity,
+                    if (voiceIsOn) "Voice assistant turned ON" else "Voice assistant turned OFF",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                showHome()
+            }
+        }
+
+        buttons.addView(testButton, LinearLayout.LayoutParams(0, dp(52), 1f))
+
+        buttons.addView(powerButton, LinearLayout.LayoutParams(0, dp(52), 1f).apply {
             setMargins(dp(14), 0, 0, 0)
         })
 
@@ -268,7 +328,7 @@ class MainActivity : Activity() {
     private fun priorityRouteCard() {
         val card = cardBox().apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(18), dp(24), dp(18))
+            setPadding(dp(24), dp(18), dp(24), dp(30))
         }
 
         card.addView(TextView(this).apply {
@@ -280,7 +340,7 @@ class MainActivity : Activity() {
 
         card.addView(TextView(this).apply {
             text = prefs.getString("first_priority_route", "Kawit → General Trias")
-            textSize = 23f
+            textSize = 21f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
             setPadding(0, dp(14), 0, 0)
@@ -290,7 +350,7 @@ class MainActivity : Activity() {
             text = "Only this selected route can auto-open Waze"
             textSize = 13f
             setTextColor(gray)
-            setPadding(0, dp(4), 0, dp(16))
+            setPadding(0, dp(4), 0, dp(18))
         })
 
         val row = LinearLayout(this).apply {
@@ -299,12 +359,13 @@ class MainActivity : Activity() {
 
         row.addView(outlineButton("🗑  Clear Priority") {
             prefs.edit().remove("first_priority_route").apply()
+            Toast.makeText(this, "Priority route cleared", Toast.LENGTH_SHORT).show()
             showRoutes()
-        }, LinearLayout.LayoutParams(0, dp(46), 1f))
+        }, LinearLayout.LayoutParams(0, dp(54), 1f))
 
         row.addView(outlineButton("✎  Change Route") {
-            Toast.makeText(this, "Select from saved routes", Toast.LENGTH_SHORT).show()
-        }, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+            showRoutes()
+        }, LinearLayout.LayoutParams(0, dp(54), 1f).apply {
             setMargins(dp(14), 0, 0, 0)
         })
 
@@ -421,7 +482,7 @@ class MainActivity : Activity() {
         }
 
         row.addView(outlineButton("🔊 Speak Again") {
-            speak("Lalamove booking detected. Cavite to Manila. Fare 580 pesos.")
+            speak("Lalamove booking detected. Pickup Cavite. Drop off Manila. Fare 580 pesos.")
         }, LinearLayout.LayoutParams(0, dp(46), 1f))
 
         row.addView(blueButton("↗ Open App") {
@@ -503,23 +564,33 @@ class MainActivity : Activity() {
     private fun showSettings() {
         clear()
         pageTitle("Settings")
-        settingsGroup("Voice & Sound", listOf(
-            settingSwitch("🔊", "Voice Alerts", "voice_enabled"),
-            settingSwitch("▌▌", "Speak Every Route", "speak_all_routes"),
-            settingText("🔔", "Alert Volume", "Slider controlled by phone volume"),
-            settingSwitch("📳", "Vibrate Alerts", "vibrate_alerts")
-        ))
 
-        settingsGroup("Driving Preferences", listOf(
-            settingText("➤", "Navigation Mode", "Choose your preferred navigation app"),
-            settingSwitch("📍", "Auto-Start Navigation", "auto_open_waze")
-        ))
+        settingsGroup(
+            "Voice & Sound",
+            listOf(
+                settingSwitch("🔊", "Voice Alerts", "voice_enabled"),
+                settingSwitch("▌▌", "Speak Every Route", "speak_all_routes"),
+                settingText("🔔", "Alert Volume", "Use phone media volume"),
+                settingSwitch("📳", "Vibrate Alerts", "vibrate_alerts")
+            )
+        )
 
-        settingsGroup("App & System", listOf(
-            settingText("🛡", "Permissions", "Manage app permissions"),
-            settingText("☼", "Appearance", "Choose app theme"),
-            settingText("ⓘ", "About", "Version, terms, and more")
-        ))
+        settingsGroup(
+            "Driving Preferences",
+            listOf(
+                settingText("➤", "Navigation Mode", "Choose your preferred navigation app"),
+                settingSwitch("📍", "Auto-Start Navigation", "auto_open_waze")
+            )
+        )
+
+        settingsGroup(
+            "App & System",
+            listOf(
+                settingText("🛡", "Permissions", "Manage app permissions"),
+                settingText("☼", "Appearance", "Choose app theme"),
+                settingText("ⓘ", "About", "Version, terms, and more")
+            )
+        )
 
         content.addView(blueButton("Open Notification Access") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -581,11 +652,13 @@ class MainActivity : Activity() {
 
         row.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+
             addView(TextView(this@MainActivity).apply {
                 text = label
                 textSize = 15f
                 setTextColor(dark)
             })
+
             if (sub.isNotBlank()) {
                 addView(TextView(this@MainActivity).apply {
                     text = sub
@@ -644,6 +717,7 @@ class MainActivity : Activity() {
             this.text = text
             textSize = 14f
             setTextColor(Color.WHITE)
+            setTypeface(null, Typeface.BOLD)
             setBackgroundColor(blue)
             setOnClickListener { action() }
         }
@@ -652,8 +726,9 @@ class MainActivity : Activity() {
     private fun outlineButton(text: String, action: () -> Unit): Button {
         return Button(this).apply {
             this.text = text
-            textSize = 14f
+            textSize = 13f
             setTextColor(blue)
+            setTypeface(null, Typeface.BOLD)
             setBackgroundColor(Color.WHITE)
             setOnClickListener { action() }
         }
@@ -717,7 +792,12 @@ class MainActivity : Activity() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (e: Exception) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")))
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")
+                )
+            )
         }
     }
 
