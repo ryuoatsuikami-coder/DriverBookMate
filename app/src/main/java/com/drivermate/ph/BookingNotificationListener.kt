@@ -18,52 +18,42 @@ class BookingNotificationListener : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
 
     private val allPlaces = listOf(
-        // Cavite
-        "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City",
-        "Dasmarinas", "Dasma", "General Trias", "Gen Trias", "Imus",
-        "Indang", "Kawit", "Magallanes Cavite", "Maragondon", "Mendez",
-        "Naic", "Noveleta", "Rosario", "Silang", "Tagaytay", "Tanza",
-        "Ternate", "Trece Martires",
+        "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City", "Dasmarinas",
+        "General Trias", "Gen Trias", "Imus", "Indang", "Kawit", "Magallanes Cavite",
+        "Maragondon", "Mendez", "Naic", "Noveleta", "Rosario", "Silang",
+        "Tagaytay", "Tanza", "Ternate", "Trece Martires",
 
-        // Metro Manila
-        "Manila", "Caloocan", "Las Pinas", "Makati", "Malabon",
-        "Mandaluyong", "Marikina", "Muntinlupa", "Navotas", "Paranaque",
-        "Pasay", "Pasig", "Pateros", "Quezon City", "QC", "San Juan",
-        "Taguig", "Valenzuela", "BGC", "Bonifacio Global City", "Alabang",
+        "Manila", "Caloocan", "Las Pinas", "Makati", "Malabon", "Mandaluyong",
+        "Marikina", "Muntinlupa", "Navotas", "Paranaque", "Pasay", "Pasig",
+        "Pateros", "Quezon City", "QC", "San Juan", "Taguig", "Valenzuela",
+        "BGC", "Bonifacio Global City", "Alabang",
 
-        // Laguna
-        "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba",
-        "Calauan", "Cavinti", "Famy", "Kalayaan", "Liliw", "Los Banos",
-        "Luisiana", "Lumban", "Mabitac", "Magdalena", "Majayjay",
-        "Nagcarlan", "Paete", "Pagsanjan", "Pakil", "Pangil", "Pila",
-        "Rizal Laguna", "San Pablo", "San Pedro", "Santa Cruz Laguna",
-        "Santa Maria Laguna", "Santa Rosa", "Siniloan", "Victoria",
+        "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba", "Calauan",
+        "Cavinti", "Famy", "Kalayaan", "Liliw", "Los Banos", "Luisiana",
+        "Lumban", "Mabitac", "Magdalena", "Majayjay", "Nagcarlan", "Paete",
+        "Pagsanjan", "Pakil", "Pangil", "Pila", "Rizal Laguna", "San Pablo",
+        "San Pedro", "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
+        "Siniloan", "Victoria",
 
-        // Batangas
-        "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City",
-        "Bauan", "Calaca", "Calatagan", "Cuenca", "Ibaan", "Laurel",
-        "Lemery", "Lian", "Lipa", "Lobo", "Mabini", "Malvar",
-        "Mataasnakahoy", "Nasugbu", "Padre Garcia", "Rosario Batangas",
-        "San Jose Batangas", "San Juan Batangas", "San Luis Batangas",
-        "San Nicolas", "San Pascual", "Santa Teresita",
-        "Santo Tomas Batangas", "Taal", "Talisay Batangas", "Tanauan",
-        "Taysan", "Tingloy", "Tuy",
+        "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City", "Bauan",
+        "Calaca", "Calatagan", "Cuenca", "Ibaan", "Laurel", "Lemery", "Lian",
+        "Lipa", "Lobo", "Mabini", "Malvar", "Mataasnakahoy", "Nasugbu",
+        "Padre Garcia", "Rosario Batangas", "San Jose Batangas",
+        "San Juan Batangas", "San Luis Batangas", "San Nicolas", "San Pascual",
+        "Santa Teresita", "Santo Tomas Batangas", "Taal", "Talisay Batangas",
+        "Tanauan", "Taysan", "Tingloy", "Tuy",
 
-        // Bulacan
         "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan", "Bustos",
         "Calumpit", "Dona Remedios Trinidad", "Guiguinto", "Hagonoy",
         "Malolos", "Marilao", "Meycauayan", "Norzagaray", "Obando",
         "Pandi", "Paombong", "Plaridel", "Pulilan", "San Ildefonso",
-        "San Jose del Monte", "San Miguel", "San Rafael",
-        "Santa Maria Bulacan",
+        "San Jose del Monte", "San Miguel", "San Rafael", "Santa Maria Bulacan",
 
-        // Pampanga
-        "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba",
-        "Floridablanca", "Guagua", "Lubao", "Mabalacat", "Macabebe",
-        "Magalang", "Masantol", "Mexico", "Minalin", "Porac",
-        "San Fernando Pampanga", "San Luis Pampanga", "San Simon",
-        "Santa Ana Pampanga", "Santa Rita", "Santo Tomas Pampanga",
-        "Sasmuan"
+        "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba", "Floridablanca",
+        "Guagua", "Lubao", "Mabalacat", "Macabebe", "Magalang", "Masantol",
+        "Mexico", "Minalin", "Porac", "San Fernando Pampanga",
+        "San Luis Pampanga", "San Simon", "Santa Ana Pampanga", "Santa Rita",
+        "Santo Tomas Pampanga", "Sasmuan"
     )
 
     override fun onCreate() {
@@ -74,6 +64,7 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         initTts()
+
         handler.postDelayed({
             speakNow("DriverMate PH notification reader is active.")
         }, 800)
@@ -97,7 +88,6 @@ class BookingNotificationListener : NotificationListenerService() {
                 tts?.setSpeechRate(0.85f)
                 tts?.setPitch(1.03f)
 
-                // Voice follows MEDIA volume.
                 tts?.setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -111,8 +101,8 @@ class BookingNotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         initTts()
 
-        val appPackage = sbn.packageName.lowercase()
         val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
+        val appPackage = sbn.packageName.lowercase()
 
         val enabled = when {
             appPackage.contains("lalamove") -> prefs.getBoolean("enable_lalamove", true)
@@ -146,24 +136,23 @@ class BookingNotificationListener : NotificationListenerService() {
 
         if (fullText.isBlank()) return
 
-        val bookingType = detectBookingType(fullText)
         val route = detectRoute(fullText)
         val fare = detectFare(fullText)
         val distance = detectDistance(fullText)
+        val bookingType = detectBookingType(fullText)
 
         val speakAllRoutes = prefs.getBoolean("speak_all_routes", false)
         val preferred = isPreferredRoute(route)
-        val firstPriority = getFirstPriorityRoute()
 
         if (!speakAllRoutes && !preferred) return
 
-        val cleanFare = if (fare == "not detected") "not detected" else "$fare pesos"
-        val cleanDistance = if (distance == "not detected") "based on app notification" else "$distance kilometers"
+        val recommendation = getRecommendation(route, fare, distance)
 
-        val message = "$bookingType booking. $route. Fare $cleanFare. Distance $cleanDistance."
+        val message = "$bookingType booking. Pickup to drop off. $route. Fare $fare pesos. Distance $distance. Recommended action. $recommendation."
 
         speakNow(message)
 
+        val firstPriority = getFirstPriorityRoute()
         val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
 
         if (
@@ -174,45 +163,6 @@ class BookingNotificationListener : NotificationListenerService() {
             handler.postDelayed({
                 openWaze(route)
             }, 5000)
-        }
-    }
-
-    private fun speakNow(message: String) {
-        initTts()
-
-        handler.postDelayed({
-            if (ttsReady) {
-                tts?.stop()
-                tts?.speak(
-                    message,
-                    TextToSpeech.QUEUE_FLUSH,
-                    null,
-                    "booking_alert_${System.currentTimeMillis()}"
-                )
-            } else {
-                handler.postDelayed({
-                    tts?.speak(
-                        message,
-                        TextToSpeech.QUEUE_FLUSH,
-                        null,
-                        "booking_alert_retry_${System.currentTimeMillis()}"
-                    )
-                }, 1500)
-            }
-        }, 300)
-    }
-
-    private fun detectBookingType(text: String): String {
-        val lower = text.lowercase()
-
-        return when {
-            lower.contains("priority") -> "Priority"
-            lower.contains("preferred") -> "Preferred"
-            lower.contains("immediate") -> "Immediate"
-            lower.contains("regular") -> "Regular"
-            lower.contains("pooling") -> "Pooling"
-            lower.contains("rush") -> "Priority"
-            else -> "Booking"
         }
     }
 
@@ -251,61 +201,20 @@ class BookingNotificationListener : NotificationListenerService() {
             return null
         }
 
-        // Pickup is always detected first.
         val pickup = findPlaceAfterKeyword(
-            listOf(
-                "pickup",
-                "pick up",
-                "pick-up",
-                "from",
-                "origin",
-                "sender",
-                "collect from"
-            )
+            listOf("pickup", "pick up", "pick-up", "from", "origin", "sender", "collect from")
         )
 
-        // Drop-off is always detected second.
         val dropoff = findPlaceAfterKeyword(
-            listOf(
-                "dropoff",
-                "drop off",
-                "drop-off",
-                "destination",
-                "to",
-                "receiver",
-                "deliver to",
-                "drop"
-            )
+            listOf("dropoff", "drop off", "drop-off", "destination", "to", "receiver", "deliver to", "drop")
         )
 
-        if (
-            pickup != null &&
-            dropoff != null &&
-            !pickup.equals(dropoff, true)
-        ) {
+        if (pickup != null && dropoff != null && !pickup.equals(dropoff, true)) {
             return "$pickup to $dropoff"
         }
 
-        // Direct route pattern: FROM to TO.
-        for ((rawFrom, cleanFrom) in normalizedPlaces) {
-            for ((rawTo, cleanTo) in normalizedPlaces) {
-                if (cleanFrom.equals(cleanTo, true)) continue
-
-                val pattern = Regex(
-                    """\b${Regex.escape(rawFrom)}\b\s*(to|going to|drop.?off|destination|→|➡)\s*\b${Regex.escape(rawTo)}\b""",
-                    RegexOption.IGNORE_CASE
-                )
-
-                if (pattern.containsMatchIn(cleanText)) {
-                    return "$cleanFrom to $cleanTo"
-                }
-            }
-        }
-
-        // Saved route check.
         for (saved in getSavedRoutes()) {
             val parts = saved.route.split(" to ", ignoreCase = true)
-
             if (parts.size == 2) {
                 val savedFrom = normalizePlace(parts[0])
                 val savedTo = normalizePlace(parts[1])
@@ -320,7 +229,6 @@ class BookingNotificationListener : NotificationListenerService() {
             }
         }
 
-        // Fallback: first two different places by text order.
         val found = normalizedPlaces
             .mapNotNull { (raw, clean) ->
                 val index = lower.indexOf(raw.lowercase())
@@ -337,14 +245,17 @@ class BookingNotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun normalizePlace(place: String): String {
-        return when (place.trim().lowercase()) {
-            "gen trias" -> "General Trias"
-            "dasma" -> "Dasmarinas"
-            "qc" -> "Quezon City"
-            "bgc" -> "BGC"
-            "bonifacio global city" -> "BGC"
-            else -> place.trim()
+    private fun detectBookingType(text: String): String {
+        val lower = text.lowercase()
+
+        return when {
+            lower.contains("priority") -> "Priority"
+            lower.contains("preferred") -> "Preferred"
+            lower.contains("immediate") -> "Immediate"
+            lower.contains("regular") -> "Regular"
+            lower.contains("pooling") -> "Pooling"
+            lower.contains("rush") -> "Priority"
+            else -> "Booking"
         }
     }
 
@@ -364,29 +275,27 @@ class BookingNotificationListener : NotificationListenerService() {
     }
 
     private fun detectDistance(text: String): String {
-        val patterns = listOf(
-            Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
-        )
+        val pattern = Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
+        val match = pattern.find(text)
+        return match?.groupValues?.get(1) ?: "not detected"
+    }
 
-        for (pattern in patterns) {
-            val match = pattern.find(text)
-            if (match != null) return match.groupValues[1]
+    private fun getRecommendation(route: String, fare: String, distance: String): String {
+        if (route == "Route not detected") return "Wait"
+
+        val isPreferred = isPreferredRoute(route)
+        val firstPriority = getFirstPriorityRoute()
+
+        return when {
+            firstPriority.equals(route, true) -> "Take this booking"
+            isPreferred -> "Take this booking"
+            else -> "Wait"
         }
-
-        return "not detected"
     }
 
     private fun isPreferredRoute(route: String): Boolean {
         if (route == "Route not detected") return false
-
-        return getSavedRoutes().any {
-            it.route.equals(route, true)
-        }
-    }
-
-    private fun getFirstPriorityRoute(): String {
-        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
-        return prefs.getString("first_priority_route", "") ?: ""
+        return getSavedRoutes().any { it.route.equals(route, true) }
     }
 
     private fun getSavedRoutes(): List<RouteData> {
@@ -398,6 +307,21 @@ class BookingNotificationListener : NotificationListenerService() {
         return raw.split("|").mapNotNull {
             val p = it.split("~")
             if (p.size >= 3) RouteData(p[0], p[1], p[2]) else null
+        }
+    }
+
+    private fun getFirstPriorityRoute(): String {
+        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
+        return prefs.getString("first_priority_route", "") ?: ""
+    }
+
+    private fun normalizePlace(place: String): String {
+        return when (place.trim().lowercase()) {
+            "gen trias" -> "General Trias"
+            "dasma" -> "Dasmarinas"
+            "qc" -> "Quezon City"
+            "bonifacio global city" -> "BGC"
+            else -> place.trim()
         }
     }
 
@@ -429,6 +353,22 @@ class BookingNotificationListener : NotificationListenerService() {
     private fun extractDestination(route: String): String {
         val parts = route.split(" to ", ignoreCase = true)
         return if (parts.size >= 2) parts[1].trim() else route.trim()
+    }
+
+    private fun speakNow(message: String) {
+        initTts()
+
+        handler.postDelayed({
+            if (ttsReady) {
+                tts?.stop()
+                tts?.speak(
+                    message,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "booking_alert_${System.currentTimeMillis()}"
+                )
+            }
+        }, 300)
     }
 
     data class RouteData(
