@@ -29,6 +29,7 @@ class MainActivity : Activity() {
     private val card2 = Color.rgb(18, 39, 72)
     private val green = Color.rgb(0, 220, 105)
     private val red = Color.rgb(255, 80, 65)
+    private val disabled = Color.rgb(90, 110, 130)
     private val white = Color.WHITE
     private val muted = Color.rgb(175, 190, 210)
 
@@ -127,7 +128,6 @@ class MainActivity : Activity() {
         clear()
         addHeader()
         addHero()
-        addDecisionCard()
         addFirstPriorityCard()
         addVoiceStatusCard()
     }
@@ -155,14 +155,14 @@ class MainActivity : Activity() {
         }
 
         box.addView(TextView(this).apply {
-            text = "DRIVE SMARTER\nHEAR BOOKINGS\nCHOOSE ROUTES FASTER"
+            text = "DRIVE SMARTER\nCHOOSE ROUTES FASTER"
             textSize = 26f
             setTextColor(white)
             setTypeface(null, Typeface.BOLD_ITALIC)
         })
 
         box.addView(TextView(this).apply {
-            text = "Main focus: add, remove, reset, and manage preferred routes for faster booking decisions."
+            text = "Main focus: manage preferred routes, add all routes, remove routes, and reset anytime."
             textSize = 14f
             setTextColor(muted)
             setPadding(0, dp(10), 0, 0)
@@ -171,42 +171,10 @@ class MainActivity : Activity() {
         content.addView(box, marginParams(0, 0, 0, dp(14)))
     }
 
-    private fun addDecisionCard() {
-        val box = roundedBox(card2, 22).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-        }
-
-        box.addView(TextView(this).apply {
-            text = "🚦 Booking Decision Focus"
-            textSize = 20f
-            setTextColor(white)
-            setTypeface(null, Typeface.BOLD)
-        })
-
-        box.addView(TextView(this).apply {
-            text = "TAKE • WAIT • SKIP"
-            textSize = 30f
-            setTextColor(green)
-            setTypeface(null, Typeface.BOLD)
-            gravity = Gravity.CENTER
-            setPadding(0, dp(10), 0, dp(6))
-        })
-
-        box.addView(TextView(this).apply {
-            text = "The app helps drivers decide faster by matching bookings with saved preferred routes."
-            textSize = 14f
-            setTextColor(muted)
-            gravity = Gravity.CENTER
-        })
-
-        content.addView(box, marginParams(0, 0, 0, dp(14)))
-    }
-
     private fun addFirstPriorityCard() {
         val route = getFirstPriorityRoute().ifBlank { "No first priority route set" }
 
-        val box = roundedBox(card, 22).apply {
+        val box = roundedBox(card2, 22).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
         }
@@ -319,7 +287,7 @@ class MainActivity : Activity() {
         addPageTitle("Other Suggested Routes")
 
         content.addView(TextView(this).apply {
-            text = "Choose a category. You can add one route or add all routes in the category."
+            text = "Choose a category. Added routes will show ADDED ✓."
             textSize = 14f
             setTextColor(muted)
             setPadding(0, 0, 0, dp(12))
@@ -377,12 +345,21 @@ class MainActivity : Activity() {
             val before = scrollView.scrollY
             val addedCount = saveManyRoutesNoReset(routes)
             Toast.makeText(this, "$addedCount routes added", Toast.LENGTH_SHORT).show()
-            scrollView.post { scrollView.scrollTo(0, before) }
+
+            // Refresh page so buttons update to ADDED ✓
+            showSuggestedRoutes(title, routes)
+
+            scrollView.post {
+                scrollView.scrollTo(0, before)
+            }
         }, marginParams(0, dp(4), 0, dp(8)))
 
         content.addView(redButton("REMOVE ALL SAVED ROUTES") {
             removeAllSavedRoutes()
             Toast.makeText(this, "All saved routes removed", Toast.LENGTH_SHORT).show()
+
+            // Refresh page so buttons return to ADD
+            showSuggestedRoutes(title, routes)
         }, marginParams(0, dp(4), 0, dp(12)))
 
         routes.forEach { route ->
@@ -404,26 +381,37 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
-        box.addView(Button(this).apply {
-            text = "ADD"
+        val alreadySaved = isRouteAlreadySaved(route)
+
+        val addButton = Button(this).apply {
+            text = if (alreadySaved) "ADDED ✓" else "ADD"
             textSize = 12f
             setTextColor(white)
             setTypeface(null, Typeface.BOLD)
-            background = roundedDrawable(green, 14)
+            isEnabled = !alreadySaved
+            background = roundedDrawable(if (alreadySaved) disabled else green, 14)
+        }
 
-            setOnClickListener {
-                val before = scrollView.scrollY
-                val saved = saveFullRouteNoReset(route, "0", "manual")
+        addButton.setOnClickListener {
+            val before = scrollView.scrollY
+            val saved = saveFullRouteNoReset(route, "0", "manual")
 
-                Toast.makeText(
-                    this@MainActivity,
-                    if (saved) "Route added" else "Already saved",
-                    Toast.LENGTH_SHORT
-                ).show()
+            addButton.text = "ADDED ✓"
+            addButton.isEnabled = false
+            addButton.background = roundedDrawable(disabled, 14)
 
-                scrollView.post { scrollView.scrollTo(0, before) }
+            Toast.makeText(
+                this,
+                if (saved) "Route added" else "Already saved",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            scrollView.post {
+                scrollView.scrollTo(0, before)
             }
-        }, LinearLayout.LayoutParams(dp(82), dp(46)))
+        }
+
+        box.addView(addButton, LinearLayout.LayoutParams(dp(96), dp(46)))
 
         return box.apply {
             layoutParams = marginParams(0, dp(5), 0, dp(5))
@@ -492,7 +480,7 @@ class MainActivity : Activity() {
             val q = query.trim()
             if (q.isBlank()) return
 
-            allPlaces.filter { it.startsWith(q, true) }.take(60).forEach { place ->
+            allPlaces.filter { it.startsWith(q, true) }.take(80).forEach { place ->
                 box.addView(TextView(this).apply {
                     text = place
                     textSize = 16f
@@ -622,6 +610,15 @@ class MainActivity : Activity() {
             cavitePlaces + manilaPlaces + lagunaPlaces + batangasPlaces +
                 bulacanPlaces + pampangaPlaces
             ).distinct().sorted()
+    }
+
+    private fun isRouteAlreadySaved(route: String): Boolean {
+        val current = prefs.getString("saved_full_routes", "") ?: ""
+
+        return current.split("|").any {
+            val p = it.split("~")
+            p.isNotEmpty() && p[0].equals(route.trim(), true)
+        }
     }
 
     private fun saveManyRoutesNoReset(routes: List<String>): Int {
@@ -824,10 +821,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun greenButton(text: String, action: () -> Unit, params: LinearLayout.LayoutParams): Button {
-        return greenButton(text, action).apply { layoutParams = params }
-    }
-
     private fun redButton(text: String, action: () -> Unit): Button {
         return Button(this).apply {
             this.text = text
@@ -837,10 +830,6 @@ class MainActivity : Activity() {
             background = roundedDrawable(red, 18)
             setOnClickListener { action() }
         }
-    }
-
-    private fun redButton(text: String, action: () -> Unit, params: LinearLayout.LayoutParams): Button {
-        return redButton(text, action).apply { layoutParams = params }
     }
 
     private fun roundedBox(color: Int, radius: Int): LinearLayout {
