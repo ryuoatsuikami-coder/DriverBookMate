@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -16,6 +17,7 @@ class MainActivity : Activity() {
 
     private val prefs by lazy { getSharedPreferences("driver_mate_settings", MODE_PRIVATE) }
     private var tts: TextToSpeech? = null
+    private var ttsReady = false
 
     private lateinit var root: LinearLayout
     private lateinit var content: LinearLayout
@@ -55,29 +57,25 @@ class MainActivity : Activity() {
 
     private val lagunaPoints = listOf(
         "San Pedro Laguna", "Biñan", "Santa Rosa", "Cabuyao", "Calamba",
-        "Los Baños", "Bay Laguna", "San Pablo", "Santa Cruz Laguna", "Pagsanjan",
-        "Liliw", "Nagcarlan", "Victoria Laguna", "Calauan"
+        "Los Baños", "Bay Laguna", "San Pablo", "Santa Cruz Laguna", "Pagsanjan"
     )
 
     private val batangasPoints = listOf(
         "Santo Tomas Batangas", "Tanauan", "Lipa", "Malvar", "Batangas City",
-        "Bauan", "Lemery", "Taal", "Nasugbu", "Balayan",
-        "Calatagan", "San Juan Batangas", "Rosario Batangas", "Ibaan"
+        "Bauan", "Lemery", "Taal", "Nasugbu", "Balayan", "Calatagan"
     )
 
     private val quezonPoints = listOf(
         "Lucena", "Tayabas", "Candelaria Quezon", "Sariaya", "Tiaong",
-        "Lucban", "Pagbilao", "Atimonan", "Gumaca", "Calauag",
-        "Lopez Quezon", "Mauban", "Real Quezon", "Infanta Quezon"
+        "Lucban", "Pagbilao", "Atimonan", "Gumaca", "Calauag"
     )
 
     private val luzonPoints = listOf(
         "Antipolo", "Cainta", "Taytay Rizal", "Angono", "Binangonan",
         "Malolos", "Meycauayan", "Baliwag", "San Jose del Monte",
         "San Fernando Pampanga", "Angeles", "Mabalacat",
-        "Balanga", "Mariveles", "Olongapo", "Subic",
-        "Tarlac City", "Cabanatuan", "Gapan", "Baguio",
-        "Dagupan", "Urdaneta", "La Union", "Naga", "Legazpi", "Sorsogon"
+        "Balanga", "Olongapo", "Subic", "Tarlac City", "Cabanatuan",
+        "Baguio", "Dagupan", "La Union", "Naga", "Legazpi", "Sorsogon"
     )
 
     private val routeCategories = listOf(
@@ -95,7 +93,16 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (!prefs.contains("voice_enabled")) {
+            prefs.edit()
+                .putBoolean("voice_enabled", true)
+                .putFloat("voice_volume", 1.0f)
+                .apply()
+        }
+
         selectedRouteCategory = prefs.getString("route_category", "Cavite Area") ?: "Cavite Area"
+
         setupVoice()
         setupLayout()
         showHome()
@@ -104,9 +111,26 @@ class MainActivity : Activity() {
     private fun setupVoice() {
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale("en", "PH")
+                ttsReady = true
+
+                val result = tts?.setLanguage(Locale.US)
+
                 tts?.setSpeechRate(0.88f)
                 tts?.setPitch(1.02f)
+
+                tts?.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    Toast.makeText(this, "TTS language not supported on this phone", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                ttsReady = false
+                Toast.makeText(this, "Voice engine failed to start", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -145,7 +169,7 @@ class MainActivity : Activity() {
         voiceAssistantCard()
         heroCard()
         bookingAppsCard()
-        priorityRouteCard(isHome = true)
+        priorityRouteCard(true)
     }
 
     private fun homeHeader() {
@@ -206,8 +230,8 @@ class MainActivity : Activity() {
             })
 
             addView(TextView(this@MainActivity).apply {
-                text = if (isOn) "Listening for bookings from your enabled apps"
-                else "Tap Turn On to listen for bookings again"
+                text = if (isOn) "Ready to read pickup, drop-off, fare, and distance"
+                else "Tap Turn On to enable voice alerts"
                 textSize = 13f
                 setTextColor(gray)
             })
@@ -267,8 +291,8 @@ class MainActivity : Activity() {
                 speakBookingRoute(
                     appName = "DriverMate PH",
                     route = getPriorityRoute(),
-                    fare = "not available",
-                    distance = "not available"
+                    fare = "500 pesos",
+                    distance = "20 kilometers"
                 )
 
                 scrollView.postDelayed({
@@ -345,20 +369,13 @@ class MainActivity : Activity() {
             }
         })
 
-        card.addView(TextView(this).apply {
-            text = "›"
-            textSize = 28f
-            setTextColor(gray)
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(dp(28), -1))
-
         return card.apply { layoutParams = margin(0, dp(4), 0, dp(4)) }
     }
 
     private fun showRoutes(resetScroll: Boolean = true) {
         clear(resetScroll)
         pageTitle("Routes")
-        priorityRouteCard(isHome = false)
+        priorityRouteCard(false)
         savedRoutesSection()
         suggestedRoutesSection()
     }
@@ -397,14 +414,13 @@ class MainActivity : Activity() {
         if (!isHome) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
 
-            row.addView(outlineButton("🗑  Clear Priority") {
+            row.addView(outlineButton("🗑 Clear Priority") {
                 prefs.edit().remove("first_priority_route").apply()
-                Toast.makeText(this, "Priority route cleared", Toast.LENGTH_SHORT).show()
                 showRoutes()
             }, LinearLayout.LayoutParams(0, dp(54), 1f))
 
-            row.addView(outlineButton("🔊  Speak Priority") {
-                speakBookingRoute("DriverMate PH", getPriorityRoute(), "not available", "not available")
+            row.addView(outlineButton("🔊 Speak Priority") {
+                speakBookingRoute("DriverMate PH", getPriorityRoute(), "500 pesos", "20 kilometers")
             }, LinearLayout.LayoutParams(0, dp(54), 1f).apply {
                 setMargins(dp(14), 0, 0, 0)
             })
@@ -433,7 +449,7 @@ class MainActivity : Activity() {
             })
         } else {
             saved.sorted().forEach { route ->
-                card.addView(routeListRow(route, saved = true))
+                card.addView(routeListRow(route, true))
             }
         }
 
@@ -442,7 +458,6 @@ class MainActivity : Activity() {
 
     private fun suggestedRoutesSection() {
         sectionTitle("Suggested Routes")
-
         routeCategoryButtons()
 
         val currentRoutes = getRoutesByCategory(selectedRouteCategory)
@@ -456,13 +471,11 @@ class MainActivity : Activity() {
             val saved = getSavedRoutes().toMutableSet()
             saved.addAll(currentRoutes)
             saveRoutes(saved)
-            Toast.makeText(this, "All routes in this category added", Toast.LENGTH_SHORT).show()
             showRoutes(false)
         }, LinearLayout.LayoutParams(0, dp(46), 1f))
 
         tools.addView(outlineButton("Remove All") {
             saveRoutes(emptySet())
-            Toast.makeText(this, "Saved routes removed", Toast.LENGTH_SHORT).show()
             showRoutes(false)
         }, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
             setMargins(dp(12), 0, 0, 0)
@@ -483,16 +496,14 @@ class MainActivity : Activity() {
         }
 
         currentRoutes.forEach { route ->
-            card.addView(routeListRow(route, saved = false))
+            card.addView(routeListRow(route, false))
         }
 
         content.addView(card)
     }
 
     private fun routeCategoryButtons() {
-        val wrapper = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
+        val wrapper = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         routeCategories.chunked(2).forEach { pair ->
             val row = LinearLayout(this).apply {
@@ -518,10 +529,6 @@ class MainActivity : Activity() {
                 })
             }
 
-            if (pair.size == 1) {
-                row.addView(Space(this), LinearLayout.LayoutParams(0, dp(46), 1f))
-            }
-
             wrapper.addView(row)
         }
 
@@ -529,8 +536,7 @@ class MainActivity : Activity() {
     }
 
     private fun routeListRow(route: String, saved: Boolean): LinearLayout {
-        val savedRoutes = getSavedRoutes()
-        val alreadyAdded = savedRoutes.contains(route)
+        val alreadyAdded = getSavedRoutes().contains(route)
         val currentPriority = getPriorityRoute()
 
         val row = LinearLayout(this).apply {
@@ -539,7 +545,6 @@ class MainActivity : Activity() {
             setPadding(0, dp(12), 0, dp(12))
             setOnClickListener {
                 prefs.edit().putString("first_priority_route", route).apply()
-                Toast.makeText(this@MainActivity, "Priority route changed", Toast.LENGTH_SHORT).show()
                 showRoutes(false)
             }
         }
@@ -573,7 +578,6 @@ class MainActivity : Activity() {
                     val updated = getSavedRoutes().toMutableSet()
                     updated.remove(route)
                     saveRoutes(updated)
-                    Toast.makeText(this@MainActivity, "Route removed", Toast.LENGTH_SHORT).show()
                     showRoutes(false)
                 }
             }, LinearLayout.LayoutParams(dp(44), dp(44)))
@@ -585,13 +589,8 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setOnClickListener {
                     val updated = getSavedRoutes().toMutableSet()
-                    if (!updated.contains(route)) {
-                        updated.add(route)
-                        saveRoutes(updated)
-                        Toast.makeText(this@MainActivity, "Route added", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@MainActivity, "Already added", Toast.LENGTH_SHORT).show()
-                    }
+                    updated.add(route)
+                    saveRoutes(updated)
                     showRoutes(false)
                 }
             }, LinearLayout.LayoutParams(dp(44), dp(44)))
@@ -619,10 +618,6 @@ class MainActivity : Activity() {
                 routes.addAll(generateRoutes(lagunaPoints, manilaPoints))
                 routes.addAll(generateRoutes(manilaPoints, batangasPoints))
                 routes.addAll(generateRoutes(batangasPoints, manilaPoints))
-                routes.addAll(generateRoutes(lagunaPoints, batangasPoints))
-                routes.addAll(generateRoutes(batangasPoints, lagunaPoints))
-                routes.addAll(generateRoutes(manilaPoints, quezonPoints))
-                routes.addAll(generateRoutes(quezonPoints, manilaPoints))
                 routes.distinct().sorted()
             }
         }.distinct().sorted()
@@ -634,29 +629,10 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun getPriorityRoute(): String {
-        return prefs.getString("first_priority_route", "Kawit → General Trias") ?: "Kawit → General Trias"
-    }
-
-    private fun getSavedRoutes(): Set<String> {
-        return prefs.getStringSet("saved_routes", defaultSavedRoutes) ?: defaultSavedRoutes
-    }
-
-    private fun saveRoutes(routes: Set<String>) {
-        prefs.edit().putStringSet("saved_routes", routes).apply()
-    }
-
     private fun showAlerts() {
         clear()
         pageTitle("Alerts")
-        sectionTitleRed("Current Alert")
         currentAlertCard()
-        sectionTitle("Received Alerts")
-        receivedAlert(R.drawable.lalamove_truck, "Lalamove booking detected", "Route: Cavite to Manila", "2 mins ago")
-        receivedAlert(R.drawable.grab_car, "Grab booking detected", "Route: Noveleta to Trece Martires", "8 mins ago")
-        receivedAlert(R.drawable.transportify_car, "Transportify booking detected", "Route: Tanza to Kawit", "15 mins ago")
-        sectionTitle("Missed/Ignored Alerts")
-        missedAlertCard()
     }
 
     private fun currentAlertCard() {
@@ -670,101 +646,23 @@ class MainActivity : Activity() {
         }
 
         card.addView(TextView(this).apply {
-            text = "Lalamove Booking\nDetected   NEW"
+            text = "Lalamove Booking Detected"
             textSize = 22f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
         })
 
         card.addView(TextView(this).apply {
-            text = "\n📍 $route\n💵 Fare: ₱580\n📏 Distance: 35 km\n🕘 Received: 2 mins ago"
+            text = "\nPickup: Cavite\nDrop-off: Manila\nFare: ₱580\nDistance: 35 km"
             textSize = 15f
             setTextColor(dark)
         })
 
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(18), 0, 0)
-        }
-
-        row.addView(outlineButton("🔊 Speak Again") {
+        card.addView(blueButton("🔊 Speak Again") {
             speakBookingRoute("Lalamove", route, fare, distance)
-        }, LinearLayout.LayoutParams(0, dp(46), 1f))
+        }, margin(0, dp(18), 0, 0))
 
-        row.addView(blueButton("↗ Open App") {
-            Toast.makeText(this, "Opening app", Toast.LENGTH_SHORT).show()
-        }, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-            setMargins(dp(14), 0, 0, 0)
-        })
-
-        card.addView(row)
         content.addView(card, margin(0, dp(8), 0, dp(16)))
-    }
-
-    private fun receivedAlert(imageRes: Int, title: String, route: String, time: String) {
-        val card = cardBox().apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-        }
-
-        card.addView(ImageView(this).apply {
-            setImageResource(imageRes)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
-
-        card.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(10), 0, 0, 0)
-
-            addView(TextView(this@MainActivity).apply {
-                text = title
-                textSize = 14f
-                setTextColor(dark)
-                setTypeface(null, Typeface.BOLD)
-            })
-
-            addView(TextView(this@MainActivity).apply {
-                text = route
-                textSize = 12f
-                setTextColor(gray)
-            })
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-
-        card.addView(TextView(this).apply {
-            text = "$time  ●"
-            textSize = 11f
-            setTextColor(green)
-        })
-
-        content.addView(card, margin(0, dp(4), 0, dp(4)))
-    }
-
-    private fun missedAlertCard() {
-        val card = cardBox().apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(22), dp(18), dp(22), dp(18))
-        }
-
-        card.addView(TextView(this).apply {
-            text = "🔔"
-            textSize = 32f
-        }, LinearLayout.LayoutParams(dp(54), -2))
-
-        card.addView(TextView(this).apply {
-            text = "2 missed alerts today\nTap to review missed alerts"
-            textSize = 15f
-            setTextColor(dark)
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-
-        card.addView(TextView(this).apply {
-            text = "›"
-            textSize = 28f
-            setTextColor(gray)
-        })
-
-        content.addView(card, margin(0, dp(8), 0, dp(20)))
     }
 
     private fun showSettings() {
@@ -776,36 +674,22 @@ class MainActivity : Activity() {
             listOf(
                 settingSwitch("🔊", "Voice Alerts", "voice_enabled"),
                 voiceVolumeSlider(),
-                settingSwitch("▌▌", "Speak Every Route", "speak_all_routes"),
                 settingSwitch("📳", "Vibrate Alerts", "vibrate_alerts")
-            )
-        )
-
-        settingsGroup(
-            "Driving Preferences",
-            listOf(
-                settingText("➤", "Navigation Mode", "Choose your preferred navigation app"),
-                settingSwitch("📍", "Auto-Start Navigation", "auto_open_waze")
-            )
-        )
-
-        settingsGroup(
-            "App & System",
-            listOf(
-                settingText("🛡", "Permissions", "Manage app permissions"),
-                settingText("☼", "Appearance", "Choose app theme"),
-                settingText("ⓘ", "About", "Version, terms, and more")
             )
         )
 
         content.addView(blueButton("Open Notification Access") {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }, margin(0, dp(12), 0, dp(20)))
+
+        content.addView(blueButton("Test Voice Now") {
+            speak("DriverMate PH voice test. Pickup Cavite. Drop off Manila. Fare 500 pesos. Distance 20 kilometers.")
+        }, margin(0, dp(4), 0, dp(20)))
     }
 
     private fun voiceVolumeSlider(): LinearLayout {
         val savedVolume = prefs.getFloat("voice_volume", 1.0f)
-        val currentProgress = (savedVolume * 100).toInt()
+        val currentProgress = (savedVolume * 100).toInt().coerceIn(10, 100)
 
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -841,9 +725,10 @@ class MainActivity : Activity() {
 
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    val volume = progress / 100f
+                    val safeProgress = progress.coerceAtLeast(10)
+                    val volume = safeProgress / 100f
                     prefs.edit().putFloat("voice_volume", volume).apply()
-                    percentLabel.text = "$progress%"
+                    percentLabel.text = "$safeProgress%"
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -858,7 +743,7 @@ class MainActivity : Activity() {
         row.addView(seekBar, LinearLayout.LayoutParams(-1, dp(45)))
 
         row.addView(TextView(this).apply {
-            text = "Controls the voice volume used when reading booking alerts."
+            text = "Minimum is 10% so voice will not accidentally mute."
             textSize = 11f
             setTextColor(gray)
         })
@@ -885,7 +770,7 @@ class MainActivity : Activity() {
     }
 
     private fun settingSwitch(icon: String, label: String, key: String): LinearLayout {
-        val row = settingBase(icon, label, "")
+        val row = settingBase(icon, label)
         row.addView(Switch(this).apply {
             isChecked = prefs.getBoolean(key, true)
             setOnCheckedChangeListener { _, checked ->
@@ -895,17 +780,7 @@ class MainActivity : Activity() {
         return row
     }
 
-    private fun settingText(icon: String, label: String, sub: String): LinearLayout {
-        val row = settingBase(icon, label, sub)
-        row.addView(TextView(this).apply {
-            text = "›"
-            textSize = 24f
-            setTextColor(gray)
-        })
-        return row
-    }
-
-    private fun settingBase(icon: String, label: String, sub: String): LinearLayout {
+    private fun settingBase(icon: String, label: String): LinearLayout {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -915,42 +790,19 @@ class MainActivity : Activity() {
         row.addView(TextView(this).apply {
             text = icon
             textSize = 18f
-            setTextColor(blue)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(dp(38), dp(42)))
 
-        row.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-
-            addView(TextView(this@MainActivity).apply {
-                text = label
-                textSize = 15f
-                setTextColor(dark)
-            })
-
-            if (sub.isNotBlank()) {
-                addView(TextView(this@MainActivity).apply {
-                    text = sub
-                    textSize = 10f
-                    setTextColor(gray)
-                })
-            }
+        row.addView(TextView(this).apply {
+            text = label
+            textSize = 15f
+            setTextColor(dark)
         }, LinearLayout.LayoutParams(0, -2, 1f))
 
         return row
     }
 
-    private fun speakBookingRoute(
-        appName: String,
-        route: String,
-        fare: String = "",
-        distance: String = ""
-    ) {
-        if (!prefs.getBoolean("voice_enabled", true)) {
-            Toast.makeText(this, "Voice Alerts are OFF", Toast.LENGTH_SHORT).show()
-            return
-        }
-
+    private fun speakBookingRoute(appName: String, route: String, fare: String = "", distance: String = "") {
         val cleanRoute = route
             .replace(" to ", " → ", ignoreCase = true)
             .replace("-", " → ")
@@ -977,18 +829,40 @@ class MainActivity : Activity() {
             return
         }
 
-        val volume = prefs.getFloat("voice_volume", 1.0f).coerceIn(0.0f, 1.0f)
+        if (!ttsReady || tts == null) {
+            Toast.makeText(this, "Voice is loading. Try again in 2 seconds.", Toast.LENGTH_SHORT).show()
+            setupVoice()
+            return
+        }
+
+        val volume = prefs.getFloat("voice_volume", 1.0f).coerceIn(0.1f, 1.0f)
 
         val params = Bundle().apply {
             putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume)
         }
 
-        tts?.speak(
+        val result = tts?.speak(
             message,
             TextToSpeech.QUEUE_FLUSH,
             params,
             "voice_${System.currentTimeMillis()}"
         )
+
+        if (result == TextToSpeech.ERROR || result == null) {
+            Toast.makeText(this, "Voice failed. Check phone media volume or TTS engine.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun getPriorityRoute(): String {
+        return prefs.getString("first_priority_route", "Kawit → General Trias") ?: "Kawit → General Trias"
+    }
+
+    private fun getSavedRoutes(): Set<String> {
+        return prefs.getStringSet("saved_routes", defaultSavedRoutes) ?: defaultSavedRoutes
+    }
+
+    private fun saveRoutes(routes: Set<String>) {
+        prefs.edit().putStringSet("saved_routes", routes).apply()
     }
 
     private fun pageTitle(title: String) {
@@ -1007,16 +881,6 @@ class MainActivity : Activity() {
             textSize = 17f
             setTextColor(dark)
             setPadding(dp(12), dp(8), 0, dp(6))
-        })
-    }
-
-    private fun sectionTitleRed(title: String) {
-        content.addView(TextView(this).apply {
-            text = title
-            textSize = 15f
-            setTextColor(red)
-            setTypeface(null, Typeface.BOLD)
-            setPadding(dp(8), 0, 0, dp(6))
         })
     }
 
@@ -1086,22 +950,6 @@ class MainActivity : Activity() {
                 setTextColor(gray)
                 gravity = Gravity.CENTER
             })
-        }
-    }
-
-    private fun openWaze(destination: String) {
-        val encoded = Uri.encode(destination)
-        val uri = Uri.parse("waze://?q=$encoded&navigate=yes")
-
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, uri))
-        } catch (e: Exception) {
-            startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")
-                )
-            )
         }
     }
 
