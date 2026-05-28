@@ -135,6 +135,8 @@ class MainActivity : Activity() {
     }
 
     private fun voiceAssistantCard() {
+        val isOn = prefs.getBoolean("voice_enabled", true)
+
         val card = cardBox().apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -144,7 +146,7 @@ class MainActivity : Activity() {
         card.addView(TextView(this).apply {
             text = "▌▌▌▌"
             textSize = 26f
-            setTextColor(if (prefs.getBoolean("voice_enabled", true)) green else red)
+            setTextColor(if (isOn) green else red)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(dp(80), -2))
 
@@ -152,18 +154,14 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
 
             addView(TextView(this@MainActivity).apply {
-                text = if (prefs.getBoolean("voice_enabled", true)) {
-                    "Voice Assistant Active"
-                } else {
-                    "Voice Assistant Off"
-                }
+                text = if (isOn) "Voice Assistant Active" else "Voice Assistant Off"
                 textSize = 15f
-                setTextColor(if (prefs.getBoolean("voice_enabled", true)) green else red)
+                setTextColor(if (isOn) green else red)
                 setTypeface(null, Typeface.BOLD)
             })
 
             addView(TextView(this@MainActivity).apply {
-                text = if (prefs.getBoolean("voice_enabled", true)) {
+                text = if (isOn) {
                     "Listening for bookings from your enabled apps"
                 } else {
                     "Tap Turn On to listen for bookings again"
@@ -195,11 +193,7 @@ class MainActivity : Activity() {
         }
 
         heroRow.addView(TextView(this).apply {
-            text = if (voiceIsOn) {
-                "DriverMate PH\nis active"
-            } else {
-                "DriverMate PH\nis off"
-            }
+            text = if (voiceIsOn) "DriverMate PH\nis active" else "DriverMate PH\nis off"
             textSize = 25f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
@@ -207,7 +201,8 @@ class MainActivity : Activity() {
 
         heroRow.addView(ImageView(this).apply {
             setImageResource(R.drawable.hero_car)
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            adjustViewBounds = true
         }, LinearLayout.LayoutParams(dp(120), dp(86)))
 
         card.addView(heroRow)
@@ -303,16 +298,6 @@ class MainActivity : Activity() {
                 blue
             )
         )
-
-        content.addView(
-            appImageRow(
-                R.drawable.moveit_motor,
-                "Move It",
-                "Get ride bookings from Move It",
-                "enable_moveit",
-                green
-            )
-        )
     }
 
     private fun appImageRow(
@@ -330,7 +315,7 @@ class MainActivity : Activity() {
 
         card.addView(ImageView(this).apply {
             setImageResource(imageRes)
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
         }, LinearLayout.LayoutParams(dp(76), dp(70)))
 
@@ -526,7 +511,7 @@ class MainActivity : Activity() {
 
         rowTitle.addView(ImageView(this).apply {
             setImageResource(R.drawable.lalamove_truck)
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            scaleType = ImageView.ScaleType.FIT_CENTER
         }, LinearLayout.LayoutParams(dp(58), dp(58)))
 
         rowTitle.addView(TextView(this).apply {
@@ -573,7 +558,7 @@ class MainActivity : Activity() {
 
         card.addView(ImageView(this).apply {
             setImageResource(imageRes)
-            scaleType = ImageView.ScaleType.CENTER_CROP
+            scaleType = ImageView.ScaleType.FIT_CENTER
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
 
         card.addView(LinearLayout(this).apply {
