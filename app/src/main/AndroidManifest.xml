@@ -1,18 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
         <package android:name="com.waze" />
-        <package android:name="com.lalamove.client.driver" />
+        <package android:name="com.google.android.apps.maps" />
+        <package android:name="com.lalamove.huolala.client" />
         <package android:name="com.grabtaxi.driver2" />
         <package android:name="com.transportify.driver" />
-        <package android:name="com.moveit.driver" />
+        <package android:name="com.deliveree.driver" />
     </queries>
 
     <application
         android:allowBackup="true"
+        android:icon="@drawable/app_logo"
         android:label="DriverMate PH"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
@@ -29,8 +30,8 @@
         </activity>
 
         <service
-            android:name=".BookingNotificationListener"
-            android:label="DriverMate PH Booking Listener"
+            android:name=".DriverNotificationListener"
+            android:label="DriverMate PH Notification Reader"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:exported="true">
 
