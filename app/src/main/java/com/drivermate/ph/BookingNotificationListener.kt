@@ -1,11 +1,9 @@
 package com.drivermate.ph
 
 import android.app.Notification
+import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.speech.tts.TextToSpeech
@@ -14,325 +12,183 @@ import java.util.Locale
 class BookingNotificationListener : NotificationListenerService() {
 
     private var tts: TextToSpeech? = null
-    private var ttsReady = false
-    private val handler = Handler(Looper.getMainLooper())
-
-    private val allPlaces = listOf(
-        "Alfonso", "Amadeo", "Bacoor", "Carmona", "Cavite City", "Dasmarinas",
-        "General Trias", "Gen Trias", "Imus", "Indang", "Kawit", "Magallanes Cavite",
-        "Maragondon", "Mendez", "Naic", "Noveleta", "Rosario", "Silang",
-        "Tagaytay", "Tanza", "Ternate", "Trece Martires",
-
-        "Manila", "Caloocan", "Las Pinas", "Makati", "Malabon", "Mandaluyong",
-        "Marikina", "Muntinlupa", "Navotas", "Paranaque", "Pasay", "Pasig",
-        "Pateros", "Quezon City", "QC", "San Juan", "Taguig", "Valenzuela",
-        "BGC", "Bonifacio Global City", "Alabang",
-
-        "Alaminos Laguna", "Bay", "Binan", "Cabuyao", "Calamba", "Calauan",
-        "Cavinti", "Famy", "Kalayaan", "Liliw", "Los Banos", "Luisiana",
-        "Lumban", "Mabitac", "Magdalena", "Majayjay", "Nagcarlan", "Paete",
-        "Pagsanjan", "Pakil", "Pangil", "Pila", "Rizal Laguna", "San Pablo",
-        "San Pedro", "Santa Cruz Laguna", "Santa Maria Laguna", "Santa Rosa",
-        "Siniloan", "Victoria",
-
-        "Agoncillo", "Alitagtag", "Balayan", "Balete", "Batangas City", "Bauan",
-        "Calaca", "Calatagan", "Cuenca", "Ibaan", "Laurel", "Lemery", "Lian",
-        "Lipa", "Lobo", "Mabini", "Malvar", "Mataasnakahoy", "Nasugbu",
-        "Padre Garcia", "Rosario Batangas", "San Jose Batangas",
-        "San Juan Batangas", "San Luis Batangas", "San Nicolas", "San Pascual",
-        "Santa Teresita", "Santo Tomas Batangas", "Taal", "Talisay Batangas",
-        "Tanauan", "Taysan", "Tingloy", "Tuy",
-
-        "Angat", "Balagtas", "Baliwag", "Bocaue", "Bulakan", "Bustos",
-        "Calumpit", "Dona Remedios Trinidad", "Guiguinto", "Hagonoy",
-        "Malolos", "Marilao", "Meycauayan", "Norzagaray", "Obando",
-        "Pandi", "Paombong", "Plaridel", "Pulilan", "San Ildefonso",
-        "San Jose del Monte", "San Miguel", "San Rafael", "Santa Maria Bulacan",
-
-        "Angeles", "Apalit", "Arayat", "Bacolor", "Candaba", "Floridablanca",
-        "Guagua", "Lubao", "Mabalacat", "Macabebe", "Magalang", "Masantol",
-        "Mexico", "Minalin", "Porac", "San Fernando Pampanga",
-        "San Luis Pampanga", "San Simon", "Santa Ana Pampanga", "Santa Rita",
-        "Santo Tomas Pampanga", "Sasmuan"
-    )
+    private val prefs by lazy {
+        getSharedPreferences("driver_mate_settings", Context.MODE_PRIVATE)
+    }
 
     override fun onCreate() {
         super.onCreate()
-        initTts()
-    }
 
-    override fun onListenerConnected() {
-        super.onListenerConnected()
-        initTts()
-
-        handler.postDelayed({
-            speakNow("DriverMate PH notification reader is active.")
-        }, 800)
-    }
-
-    private fun initTts() {
-        if (tts != null) return
-
-        tts = TextToSpeech(applicationContext) { status ->
+        tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                ttsReady = true
-
-                val langResult = tts?.setLanguage(Locale("en", "PH"))
-                if (
-                    langResult == TextToSpeech.LANG_MISSING_DATA ||
-                    langResult == TextToSpeech.LANG_NOT_SUPPORTED
-                ) {
-                    tts?.language = Locale.US
-                }
-
-                tts?.setSpeechRate(0.85f)
-                tts?.setPitch(1.03f)
-
-                tts?.setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                        .build()
-                )
+                tts?.language = Locale("en", "PH")
+                tts?.setSpeechRate(0.88f)
+                tts?.setPitch(1.02f)
             }
         }
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
-        initTts()
-
-        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
-        val appPackage = sbn.packageName.lowercase()
-
-        val enabled = when {
-            appPackage.contains("lalamove") -> prefs.getBoolean("enable_lalamove", true)
-            appPackage.contains("grab") -> prefs.getBoolean("enable_grab", true)
-            appPackage.contains("transportify") -> prefs.getBoolean("enable_transportify", true)
-            appPackage.contains("moveit") || appPackage.contains("move.it") -> prefs.getBoolean("enable_moveit", true)
-            else -> false
-        }
-
-        if (!enabled) return
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        if (sbn == null) return
         if (!prefs.getBoolean("voice_enabled", true)) return
 
-        val extras = sbn.notification.extras
+        val packageName = sbn.packageName.lowercase()
+        val appName = detectAppName(packageName) ?: return
 
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+        if (!isAppEnabled(appName)) return
+
+        val extras = sbn.notification.extras
+        val title = extras.getString(Notification.EXTRA_TITLE) ?: ""
         val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
-        val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString() ?: ""
-        val infoText = extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString() ?: ""
 
-        val fullText = "$title $text $bigText $subText $infoText"
+        val fullText = "$title $text $bigText"
             .replace("\n", " ")
-            .replace("₱", " pesos ")
-            .replace("PHP", " pesos ")
-            .replace("php", " pesos ")
-            .replace("→", " to ")
-            .replace("➡", " to ")
-            .replace(" - ", " to ")
-            .replace(Regex("\\s+"), " ")
+            .replace("  ", " ")
             .trim()
 
         if (fullText.isBlank()) return
+        if (!looksLikeBooking(fullText)) return
 
-        val route = detectRoute(fullText)
-        val fare = detectFare(fullText)
-        val distance = detectDistance(fullText)
-        val bookingType = detectBookingType(fullText)
+        val route = extractRoute(fullText)
+        val fare = extractFare(fullText)
 
         val speakAllRoutes = prefs.getBoolean("speak_all_routes", false)
-        val preferred = isPreferredRoute(route)
+        val priorityRoute = prefs.getString("first_priority_route", "") ?: ""
 
-        if (!speakAllRoutes && !preferred) return
+        val isPriority = priorityRoute.isNotBlank() &&
+            normalize(route).contains(normalize(priorityRoute))
 
-        val recommendation = getRecommendation(route, fare, distance)
+        if (!speakAllRoutes && !isPriority) return
 
-        val message = "$bookingType booking. Pickup to drop off. $route. Fare $fare pesos. Distance $distance. Recommended action. $recommendation."
+        val message = buildVoiceMessage(appName, route, fare, isPriority)
+        speak(message)
 
-        speakNow(message)
-
-        val firstPriority = getFirstPriorityRoute()
-        val autoOpenWaze = prefs.getBoolean("auto_open_waze", true)
-
-        if (
-            autoOpenWaze &&
-            route != "Route not detected" &&
-            firstPriority.equals(route, true)
-        ) {
-            handler.postDelayed({
-                openWaze(route)
-            }, 5000)
+        if (isPriority && prefs.getBoolean("auto_open_waze", true)) {
+            openWazeFromRoute(route)
         }
     }
 
-    private fun detectRoute(text: String): String {
-        val cleanText = text
-            .replace("\n", " ")
-            .replace("→", " to ")
-            .replace("➡", " to ")
-            .replace(" - ", " to ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-
-        val lower = cleanText.lowercase()
-
-        val normalizedPlaces = allPlaces
-            .map { raw -> raw to normalizePlace(raw) }
-            .distinctBy { it.second.lowercase() }
-
-        fun findPlaceAfterKeyword(keywords: List<String>): String? {
-            for (keyword in keywords) {
-                val keywordIndex = lower.indexOf(keyword.lowercase())
-                if (keywordIndex >= 0) {
-                    val searchArea = lower.substring(keywordIndex)
-
-                    val found = normalizedPlaces
-                        .mapNotNull { (raw, clean) ->
-                            val index = searchArea.indexOf(raw.lowercase())
-                            if (index >= 0) index to clean else null
-                        }
-                        .sortedBy { it.first }
-                        .firstOrNull()
-
-                    if (found != null) return found.second
-                }
-            }
-            return null
-        }
-
-        val pickup = findPlaceAfterKeyword(
-            listOf("pickup", "pick up", "pick-up", "from", "origin", "sender", "collect from")
-        )
-
-        val dropoff = findPlaceAfterKeyword(
-            listOf("dropoff", "drop off", "drop-off", "destination", "to", "receiver", "deliver to", "drop")
-        )
-
-        if (pickup != null && dropoff != null && !pickup.equals(dropoff, true)) {
-            return "$pickup to $dropoff"
-        }
-
-        for (saved in getSavedRoutes()) {
-            val parts = saved.route.split(" to ", ignoreCase = true)
-            if (parts.size == 2) {
-                val savedFrom = normalizePlace(parts[0])
-                val savedTo = normalizePlace(parts[1])
-
-                if (
-                    !savedFrom.equals(savedTo, true) &&
-                    lower.contains(savedFrom.lowercase()) &&
-                    lower.contains(savedTo.lowercase())
-                ) {
-                    return "$savedFrom to $savedTo"
-                }
-            }
-        }
-
-        val found = normalizedPlaces
-            .mapNotNull { (raw, clean) ->
-                val index = lower.indexOf(raw.lowercase())
-                if (index >= 0) index to clean else null
-            }
-            .sortedBy { it.first }
-            .map { it.second }
-            .distinctBy { it.lowercase() }
-
-        return if (found.size >= 2) {
-            "${found[0]} to ${found[1]}"
-        } else {
-            "Route not detected"
+    private fun detectAppName(packageName: String): String? {
+        return when {
+            packageName.contains("lalamove") -> "Lalamove"
+            packageName.contains("grab") -> "Grab"
+            packageName.contains("transportify") -> "Transportify"
+            packageName.contains("moveit") || packageName.contains("move.it") -> "Move It"
+            else -> null
         }
     }
 
-    private fun detectBookingType(text: String): String {
+    private fun isAppEnabled(appName: String): Boolean {
+        return when (appName) {
+            "Lalamove" -> prefs.getBoolean("enable_lalamove", true)
+            "Grab" -> prefs.getBoolean("enable_grab", true)
+            "Transportify" -> prefs.getBoolean("enable_transportify", true)
+            "Move It" -> prefs.getBoolean("enable_moveit", true)
+            else -> false
+        }
+    }
+
+    private fun looksLikeBooking(text: String): Boolean {
         val lower = text.lowercase()
 
-        return when {
-            lower.contains("priority") -> "Priority"
-            lower.contains("preferred") -> "Preferred"
-            lower.contains("immediate") -> "Immediate"
-            lower.contains("regular") -> "Regular"
-            lower.contains("pooling") -> "Pooling"
-            lower.contains("rush") -> "Priority"
-            else -> "Booking"
-        }
+        return listOf(
+            "booking",
+            "new order",
+            "new booking",
+            "delivery",
+            "pickup",
+            "pick up",
+            "drop off",
+            "dropoff",
+            "fare",
+            "₱",
+            "php"
+        ).any { lower.contains(it) }
     }
 
-    private fun detectFare(text: String): String {
-        val patterns = listOf(
-            Regex("""(?:fare|amount|total|price|fee)\s*[:\-]?\s*(?:pesos)?\s*([0-9]{2,6})""", RegexOption.IGNORE_CASE),
-            Regex("""(?:pesos)\s*([0-9]{2,6})""", RegexOption.IGNORE_CASE),
-            Regex("""([0-9]{2,6})\s*(?:pesos)""", RegexOption.IGNORE_CASE)
+    private fun extractRoute(text: String): String {
+        val clean = text
+            .replace("Pick-up", "Pickup", true)
+            .replace("Pick up", "Pickup", true)
+            .replace("Drop-off", "Dropoff", true)
+            .replace("Drop off", "Dropoff", true)
+            .replace("→", " to ")
+            .replace("➡", " to ")
+            .replace("-", " ")
+            .replace("\n", " ")
+            .replace("  ", " ")
+
+        val pickupRegex = Regex(
+            "(?i)(pickup|from)[:\\s]+([A-Za-z0-9 .,'#]+?)(?=\\s+(dropoff|to|destination|fare|₱|php|$))"
         )
 
-        for (pattern in patterns) {
-            val match = pattern.find(text)
-            if (match != null) return match.groupValues[1]
+        val dropoffRegex = Regex(
+            "(?i)(dropoff|destination|to)[:\\s]+([A-Za-z0-9 .,'#]+?)(?=\\s+(fare|₱|php|pickup|from|$))"
+        )
+
+        val pickup = pickupRegex.find(clean)?.groupValues?.getOrNull(2)?.trim()
+        val dropoff = dropoffRegex.find(clean)?.groupValues?.getOrNull(2)?.trim()
+
+        if (!pickup.isNullOrBlank() && !dropoff.isNullOrBlank()) {
+            return "${pickup.cleanPlace()} to ${dropoff.cleanPlace()}"
         }
 
-        return "not detected"
-    }
+        val arrowRegex = Regex(
+            "(?i)([A-Za-z0-9 .,'#]+?)\\s+(to)\\s+([A-Za-z0-9 .,'#]+)"
+        )
 
-    private fun detectDistance(text: String): String {
-        val pattern = Regex("""([0-9]+(?:\.[0-9]+)?)\s*(?:km|kilometer|kilometers)""", RegexOption.IGNORE_CASE)
-        val match = pattern.find(text)
-        return match?.groupValues?.get(1) ?: "not detected"
-    }
+        val arrow = arrowRegex.find(clean)
+        if (arrow != null) {
+            val from = arrow.groupValues[1].cleanPlace()
+            val to = arrow.groupValues[3].cleanPlace()
 
-    private fun getRecommendation(route: String, fare: String, distance: String): String {
-        if (route == "Route not detected") return "Wait"
-
-        val isPreferred = isPreferredRoute(route)
-        val firstPriority = getFirstPriorityRoute()
-
-        return when {
-            firstPriority.equals(route, true) -> "Take this booking"
-            isPreferred -> "Take this booking"
-            else -> "Wait"
+            if (from.isNotBlank() && to.isNotBlank() && !from.equals(to, true)) {
+                return "$from to $to"
+            }
         }
+
+        return "route not detected"
     }
 
-    private fun isPreferredRoute(route: String): Boolean {
-        if (route == "Route not detected") return false
-        return getSavedRoutes().any { it.route.equals(route, true) }
-    }
+    private fun extractFare(text: String): String {
+        val pesoRegex = Regex("(₱|PHP|php)\\s?([0-9,]+)")
+        val match = pesoRegex.find(text)
 
-    private fun getSavedRoutes(): List<RouteData> {
-        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
-        val raw = prefs.getString("saved_full_routes", "") ?: ""
-
-        if (raw.isBlank()) return emptyList()
-
-        return raw.split("|").mapNotNull {
-            val p = it.split("~")
-            if (p.size >= 3) RouteData(p[0], p[1], p[2]) else null
+        return if (match != null) {
+            match.groupValues[2].replace(",", "")
+        } else {
+            "not detected"
         }
     }
 
-    private fun getFirstPriorityRoute(): String {
-        val prefs = getSharedPreferences("driver_mate_settings", MODE_PRIVATE)
-        return prefs.getString("first_priority_route", "") ?: ""
-    }
+    private fun buildVoiceMessage(
+        appName: String,
+        route: String,
+        fare: String,
+        isPriority: Boolean
+    ): String {
+        val priorityText = if (isPriority) "Priority booking. " else ""
 
-    private fun normalizePlace(place: String): String {
-        return when (place.trim().lowercase()) {
-            "gen trias" -> "General Trias"
-            "dasma" -> "Dasmarinas"
-            "qc" -> "Quezon City"
-            "bonifacio global city" -> "BGC"
-            else -> place.trim()
+        val fareText = if (fare == "not detected") {
+            "Fare not detected."
+        } else {
+            "Fare $fare pesos."
         }
+
+        return "$priorityText$appName booking detected. Pickup first. $route. $fareText"
     }
 
-    private fun openWaze(route: String) {
-        val destination = extractDestination(route)
+    private fun openWazeFromRoute(route: String) {
+        if (!route.contains(" to ", true)) return
+
+        val destination = route.substringAfter(" to ").trim()
         if (destination.isBlank()) return
 
-        val encodedDestination = Uri.encode(destination)
-        val wazeUri = Uri.parse("waze://?q=$encodedDestination&navigate=yes")
+        val encoded = Uri.encode(destination)
+        val uri = Uri.parse("waze://?q=$encoded&navigate=yes")
 
-        val intent = Intent(Intent.ACTION_VIEW, wazeUri).apply {
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
 
@@ -342,7 +198,7 @@ class BookingNotificationListener : NotificationListenerService() {
             startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://waze.com/ul?q=$encodedDestination&navigate=yes")
+                    Uri.parse("https://waze.com/ul?q=$encoded&navigate=yes")
                 ).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
@@ -350,32 +206,36 @@ class BookingNotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun extractDestination(route: String): String {
-        val parts = route.split(" to ", ignoreCase = true)
-        return if (parts.size >= 2) parts[1].trim() else route.trim()
+    private fun normalize(value: String): String {
+        return value
+            .lowercase()
+            .replace("→", " to ")
+            .replace("-", " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
     }
 
-    private fun speakNow(message: String) {
-        initTts()
-
-        handler.postDelayed({
-            if (ttsReady) {
-                tts?.stop()
-                tts?.speak(
-                    message,
-                    TextToSpeech.QUEUE_FLUSH,
-                    null,
-                    "booking_alert_${System.currentTimeMillis()}"
-                )
-            }
-        }, 300)
+    private fun String.cleanPlace(): String {
+        return this
+            .replace("pickup", "", true)
+            .replace("dropoff", "", true)
+            .replace("destination", "", true)
+            .replace("fare", "", true)
+            .replace("php", "", true)
+            .replace("₱", "", true)
+            .replace(Regex("[^A-Za-z0-9 .,'#]"), "")
+            .replace("\\s+".toRegex(), " ")
+            .trim()
     }
 
-    data class RouteData(
-        val route: String,
-        val fare: String,
-        val distance: String
-    )
+    private fun speak(message: String) {
+        tts?.speak(
+            message,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "booking_${System.currentTimeMillis()}"
+        )
+    }
 
     override fun onDestroy() {
         tts?.stop()
