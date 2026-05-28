@@ -27,6 +27,7 @@ class MainActivity : Activity() {
     private val blue = Color.rgb(0, 122, 255)
     private val green = Color.rgb(32, 190, 95)
     private val red = Color.rgb(230, 35, 35)
+    private val orange = Color.rgb(255, 100, 35)
     private val bg = Color.rgb(248, 250, 253)
     private val cardStroke = Color.rgb(220, 230, 245)
     private val dark = Color.rgb(20, 20, 25)
@@ -143,7 +144,7 @@ class MainActivity : Activity() {
         card.addView(TextView(this).apply {
             text = "▌▌▌▌"
             textSize = 26f
-            setTextColor(green)
+            setTextColor(if (prefs.getBoolean("voice_enabled", true)) green else red)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(dp(80), -2))
 
@@ -188,7 +189,12 @@ class MainActivity : Activity() {
             }
         }
 
-        card.addView(TextView(this).apply {
+        val heroRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        heroRow.addView(TextView(this).apply {
             text = if (voiceIsOn) {
                 "DriverMate PH\nis active"
             } else {
@@ -197,7 +203,14 @@ class MainActivity : Activity() {
             textSize = 25f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
-        })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        heroRow.addView(ImageView(this).apply {
+            setImageResource(R.drawable.hero_car)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }, LinearLayout.LayoutParams(dp(120), dp(86)))
+
+        card.addView(heroRow)
 
         val buttons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -261,31 +274,74 @@ class MainActivity : Activity() {
     }
 
     private fun bookingAppsCard() {
-        content.addView(appRow("🚚", "LalaMove", "Get delivery bookings from LalaMove", "enable_lalamove"))
-        content.addView(appRow("🚗", "Grab", "Get delivery bookings from Grab", "enable_grab"))
-        content.addView(appRow("🚙", "Transportify", "Get delivery bookings from Transportify", "enable_transportify"))
+        content.addView(
+            appImageRow(
+                R.drawable.lalamove_truck,
+                "LalaMove",
+                "Get delivery bookings from LalaMove",
+                "enable_lalamove",
+                orange
+            )
+        )
+
+        content.addView(
+            appImageRow(
+                R.drawable.grab_car,
+                "Grab",
+                "Get delivery bookings from Grab",
+                "enable_grab",
+                green
+            )
+        )
+
+        content.addView(
+            appImageRow(
+                R.drawable.transportify_car,
+                "Transportify",
+                "Get delivery bookings from Transportify",
+                "enable_transportify",
+                blue
+            )
+        )
+
+        content.addView(
+            appImageRow(
+                R.drawable.moveit_motor,
+                "Move It",
+                "Get ride bookings from Move It",
+                "enable_moveit",
+                green
+            )
+        )
     }
 
-    private fun appRow(icon: String, title: String, desc: String, key: String): LinearLayout {
+    private fun appImageRow(
+        imageRes: Int,
+        title: String,
+        desc: String,
+        key: String,
+        titleColor: Int
+    ): LinearLayout {
         val card = cardBox().apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(12))
         }
 
-        card.addView(TextView(this).apply {
-            text = icon
-            textSize = 34f
-            gravity = Gravity.CENTER
+        card.addView(ImageView(this).apply {
+            setImageResource(imageRes)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            adjustViewBounds = true
         }, LinearLayout.LayoutParams(dp(76), dp(70)))
 
         card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
 
             addView(TextView(this@MainActivity).apply {
                 text = title
                 textSize = 16f
-                setTextColor(if (title == "LalaMove") Color.rgb(255, 100, 35) else green)
+                setTextColor(titleColor)
                 setTypeface(null, Typeface.BOLD)
             })
 
@@ -450,9 +506,9 @@ class MainActivity : Activity() {
         sectionTitleRed("Current Alert")
         currentAlertCard()
         sectionTitle("Received Alerts")
-        receivedAlert("🟧", "Lalamove booking detected", "Route: Cavite to Manila", "2 mins ago")
-        receivedAlert("🟩", "Grab booking detected", "Route: Noveleta to Trece Martires", "8 mins ago")
-        receivedAlert("🟩", "Transportify booking detected", "Route: Tanza to Kawit", "15 mins ago")
+        receivedAlert(R.drawable.lalamove_truck, "Lalamove booking detected", "Route: Cavite to Manila", "2 mins ago")
+        receivedAlert(R.drawable.grab_car, "Grab booking detected", "Route: Noveleta to Trece Martires", "8 mins ago")
+        receivedAlert(R.drawable.transportify_car, "Transportify booking detected", "Route: Tanza to Kawit", "15 mins ago")
         sectionTitle("Missed/Ignored Alerts")
         missedAlertCard()
     }
@@ -463,12 +519,25 @@ class MainActivity : Activity() {
             setPadding(dp(22), dp(18), dp(22), dp(18))
         }
 
-        card.addView(TextView(this).apply {
-            text = "🟧  Lalamove Booking\nDetected   NEW"
+        val rowTitle = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        rowTitle.addView(ImageView(this).apply {
+            setImageResource(R.drawable.lalamove_truck)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }, LinearLayout.LayoutParams(dp(58), dp(58)))
+
+        rowTitle.addView(TextView(this).apply {
+            text = "Lalamove Booking\nDetected   NEW"
             textSize = 22f
             setTextColor(dark)
             setTypeface(null, Typeface.BOLD)
-        })
+            setPadding(dp(14), 0, 0, 0)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+
+        card.addView(rowTitle)
 
         card.addView(TextView(this).apply {
             text = "\n📍 Cavite → Manila\n💵 Fare: ₱580\n🕘 Received: 2 mins ago"
@@ -495,27 +564,29 @@ class MainActivity : Activity() {
         content.addView(card, margin(0, dp(8), 0, dp(16)))
     }
 
-    private fun receivedAlert(icon: String, title: String, route: String, time: String) {
+    private fun receivedAlert(imageRes: Int, title: String, route: String, time: String) {
         val card = cardBox().apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(10), dp(14), dp(10))
         }
 
-        card.addView(TextView(this).apply {
-            text = icon
-            textSize = 28f
-            gravity = Gravity.CENTER
+        card.addView(ImageView(this).apply {
+            setImageResource(imageRes)
+            scaleType = ImageView.ScaleType.CENTER_CROP
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
 
         card.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(dp(10), 0, 0, 0)
+
             addView(TextView(this@MainActivity).apply {
                 text = title
                 textSize = 14f
                 setTextColor(dark)
                 setTypeface(null, Typeface.BOLD)
             })
+
             addView(TextView(this@MainActivity).apply {
                 text = route
                 textSize = 12f
