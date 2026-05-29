@@ -109,13 +109,18 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             }
         }
 
-        val message =
-            buildSpokenMessage(
-                appName,
-                booking
-            )
+       val message =
+    buildSpokenMessage(
+        appName,
+        booking
+    )
 
-        speak(message)
+saveLatestBooking(
+    appName,
+    booking
+)
+
+speak(message)
     }
 
     private fun detectBookingApp(
@@ -545,7 +550,39 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             "booking_voice_${System.currentTimeMillis()}"
         )
     }
+private fun saveLatestBooking(
+    appName: String,
+    booking: BookingInfo
+) 
+    }
 
+    prefs.edit()
+        .putString(
+            "last_booking_source",
+            appName
+        )
+        .putString(
+            "last_booking_pickup",
+            booking.pickup
+        )
+        .putString(
+            "last_booking_dropoff",
+            booking.dropoff
+        )
+        .putString(
+            "last_booking_fare",
+            booking.fare
+        )
+        .putString(
+            "last_booking_distance",
+            booking.distance
+        )
+        .putLong(
+            "last_booking_time",
+            System.currentTimeMillis()
+        )
+        .apply()
+}
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
