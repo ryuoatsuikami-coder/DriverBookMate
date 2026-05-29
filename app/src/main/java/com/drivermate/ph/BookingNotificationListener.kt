@@ -26,7 +26,9 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
+
             ttsReady = true
+
             tts?.language = Locale.US
             tts?.setSpeechRate(0.88f)
             tts?.setPitch(1.02f)
@@ -37,95 +39,245 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
+
         } else {
             ttsReady = false
         }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (!prefs.getBoolean("voice_enabled", true)) return
 
-        val appName = detectBookingApp(sbn.packageName) ?: return
-        if (!isAppEnabled(appName)) return
+        val voiceEnabled =
+            prefs.getBoolean(
+                "voice_enabled",
+                true
+            )
 
-        val text = extractNotificationText(sbn.notification)
-        if (text.isBlank()) return
+        if (!voiceEnabled)
+            return
 
-        val booking = parseBooking(text)
-        if (booking.pickup.isBlank() && booking.dropoff.isBlank()) return
+        val appName =
+            detectBookingApp(
+                sbn.packageName
+            ) ?: return
 
-        val speakAll = prefs.getBoolean("speak_all_routes", true)
+        if (!isAppEnabled(appName))
+            return
 
-        if (!speakAll) {
-            val route = "${booking.pickup} → ${booking.dropoff}"
-            val reverseRoute = "${booking.dropoff} → ${booking.pickup}"
-            val savedRoutes = prefs.getStringSet("saved_routes", emptySet()) ?: emptySet()
+        val text =
+            extractNotificationText(
+                sbn.notification
+            )
 
-            val matched = savedRoutes.any {
-                it.equals(route, true) || it.equals(reverseRoute, true)
-            }
+        if (text.isBlank())
+            return
 
-            if (!matched) return
+        val booking =
+            parseBooking(text)
+
+        if (
+            booking.pickup.isBlank() &&
+            booking.dropoff.isBlank()
+        ) {
+            return
         }
 
-        val message = buildSpokenMessage(appName, booking)
+        val speakAllRoutes =
+            prefs.getBoolean(
+                "speak_all_routes",
+                false
+            )
+
+        if (!speakAllRoutes) {
+
+            val route =
+                "${booking.pickup} → ${booking.dropoff}"
+
+            val preferredRoutes =
+                prefs.getStringSet(
+                    "saved_routes",
+                    emptySet()
+                ) ?: emptySet()
+
+            val matched =
+                preferredRoutes.any {
+                    it.equals(route, true)
+                }
+
+            if (!matched) {
+                return
+            }
+        }
+
+        val message =
+            buildSpokenMessage(
+                appName,
+                booking
+            )
+
         speak(message)
     }
 
-    private fun detectBookingApp(packageName: String): String? {
+    private fun detectBookingApp(
+        packageName: String
+    ): String? {
+
         return when {
-            packageName.contains("lalamove", true) -> "Lalamove"
-            packageName.contains("grab", true) -> "Grab"
-            packageName.contains("transportify", true) -> "Transportify"
-            packageName.contains("deliveree", true) -> "Transportify"
-            packageName.contains("moveit", true) -> "Move It"
-            packageName.contains("angkas", true) -> "Angkas"
+
+            packageName.contains(
+                "lalamove",
+                true
+            ) -> "Lalamove"
+
+            packageName.contains(
+                "grab",
+                true
+            ) -> "Grab"
+
+            packageName.contains(
+                "transportify",
+                true
+            ) -> "Transportify"
+
+            packageName.contains(
+                "deliveree",
+                true
+            ) -> "Transportify"
+
+            packageName.contains(
+                "moveit",
+                true
+            ) -> "Move It"
+
+            packageName.contains(
+                "angkas",
+                true
+            ) -> "Angkas"
+
             else -> null
         }
     }
 
-    private fun isAppEnabled(appName: String): Boolean {
+    private fun isAppEnabled(
+        appName: String
+    ): Boolean {
+
         return when (appName) {
-            "Lalamove" -> prefs.getBoolean("enable_lalamove", true)
-            "Grab" -> prefs.getBoolean("enable_grab", true)
-            "Transportify" -> prefs.getBoolean("enable_transportify", true)
-            "Move It" -> prefs.getBoolean("enable_moveit", true)
-            "Angkas" -> prefs.getBoolean("enable_angkas", true)
+
+            "Lalamove" ->
+                prefs.getBoolean(
+                    "enable_lalamove",
+                    true
+                )
+
+            "Grab" ->
+                prefs.getBoolean(
+                    "enable_grab",
+                    true
+                )
+
+            "Transportify" ->
+                prefs.getBoolean(
+                    "enable_transportify",
+                    true
+                )
+
+            "Move It" ->
+                prefs.getBoolean(
+                    "enable_moveit",
+                    true
+                )
+
+            "Angkas" ->
+                prefs.getBoolean(
+                    "enable_angkas",
+                    true
+                )
+
             else -> true
         }
     }
 
-    private fun extractNotificationText(notification: Notification): String {
-        val extras: Bundle = notification.extras
+    private fun extractNotificationText(
+        notification: Notification
+    ): String {
 
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-        val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
-        val subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString().orEmpty()
-        val infoText = extras.getCharSequence(Notification.EXTRA_INFO_TEXT)?.toString().orEmpty()
+        val extras =
+            notification.extras
 
-        val lines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
-            ?.joinToString(" ") { it.toString() }
-            .orEmpty()
+        val title =
+            extras.getCharSequence(
+                Notification.EXTRA_TITLE
+            )?.toString().orEmpty()
 
-        return listOf(title, text, bigText, subText, infoText, lines)
-            .filter { it.isNotBlank() }
+        val text =
+            extras.getCharSequence(
+                Notification.EXTRA_TEXT
+            )?.toString().orEmpty()
+
+        val bigText =
+            extras.getCharSequence(
+                Notification.EXTRA_BIG_TEXT
+            )?.toString().orEmpty()
+
+        val subText =
+            extras.getCharSequence(
+                Notification.EXTRA_SUB_TEXT
+            )?.toString().orEmpty()
+
+        val infoText =
+            extras.getCharSequence(
+                Notification.EXTRA_INFO_TEXT
+            )?.toString().orEmpty()
+
+        val lines =
+            extras.getCharSequenceArray(
+                Notification.EXTRA_TEXT_LINES
+            )?.joinToString(" ") {
+                it.toString()
+            }.orEmpty()
+
+        return listOf(
+            title,
+            text,
+            bigText,
+            subText,
+            infoText,
+            lines
+        )
+            .filter {
+                it.isNotBlank()
+            }
             .joinToString(" ")
             .replace("\n", " ")
             .replace(Regex("\\s+"), " ")
             .trim()
     }
 
-    private fun parseBooking(rawText: String): BookingInfo {
-        val text = normalize(rawText)
+    private fun parseBooking(
+        rawText: String
+    ): BookingInfo {
 
-        val fare = extractFare(text)
-        val distance = extractDistance(text)
+        val text =
+            normalize(rawText)
 
-        val pickup = extractPickup(text)
-        val dropoff = extractDropoff(text)
+        val fare =
+            extractFare(text)
 
-        if (pickup.isNotBlank() || dropoff.isNotBlank()) {
+        val distance =
+            extractDistance(text)
+
+        val pickup =
+            extractPickup(text)
+
+        val dropoff =
+            extractDropoff(text)
+
+        if (
+            pickup.isNotBlank() ||
+            dropoff.isNotBlank()
+        ) {
+
             return BookingInfo(
                 pickup = cleanPlace(pickup),
                 dropoff = cleanPlace(dropoff),
@@ -134,7 +286,8 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             )
         }
 
-        val route = extractRouteBySeparator(text)
+        val route =
+            extractRouteBySeparator(text)
 
         return BookingInfo(
             pickup = cleanPlace(route.first),
@@ -144,56 +297,95 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
         )
     }
 
-    private fun normalize(value: String): String {
+    private fun normalize(
+        value: String
+    ): String {
+
         return value
             .replace("–", " → ")
             .replace("—", " → ")
             .replace("➡", " → ")
             .replace("➜", " → ")
             .replace("→", " → ")
-            .replace(" to ", " → ", ignoreCase = true)
+            .replace(" to ", " → ", true)
             .replace(Regex("\\s+"), " ")
             .trim()
     }
 
-    private fun extractPickup(text: String): String {
+    private fun extractPickup(
+        text: String
+    ): String {
+
         val patterns = listOf(
             "(?i)(pickup|pick up|pick-up|from|origin|sender)\\s*[:\\-]?\\s*(.*?)(?=\\s+(dropoff|drop off|drop-off|destination|receiver|to)\\s*[:\\-]|₱|PHP|\\d+\\s?km|$)",
             "(?i)\\bfrom\\b\\s*(.*?)(?=\\s+to\\s+|₱|PHP|\\d+\\s?km|$)"
         )
 
         for (p in patterns) {
-            val matcher = Pattern.compile(p).matcher(text)
-            if (matcher.find()) return matcher.group(2)?.trim().orEmpty()
+            val matcher =
+                Pattern.compile(p)
+                    .matcher(text)
+
+            if (matcher.find()) {
+                return matcher.group(2)
+                    ?.trim()
+                    .orEmpty()
+            }
         }
 
         return ""
     }
 
-    private fun extractDropoff(text: String): String {
+    private fun extractDropoff(
+        text: String
+    ): String {
+
         val patterns = listOf(
             "(?i)(dropoff|drop off|drop-off|destination|receiver|to)\\s*[:\\-]?\\s*(.*?)(?=₱|PHP|fare|distance|\\d+\\s?km|$)",
             "(?i)\\bto\\b\\s*(.*?)(?=₱|PHP|fare|distance|\\d+\\s?km|$)"
         )
 
         for (p in patterns) {
-            val matcher = Pattern.compile(p).matcher(text)
-            if (matcher.find()) return matcher.group(2)?.trim().orEmpty()
+            val matcher =
+                Pattern.compile(p)
+                    .matcher(text)
+
+            if (matcher.find()) {
+                return matcher.group(2)
+                    ?.trim()
+                    .orEmpty()
+            }
         }
 
         return ""
     }
 
-    private fun extractRouteBySeparator(text: String): Pair<String, String> {
-        if (!text.contains(" → ")) return Pair("", "")
+    private fun extractRouteBySeparator(
+        text: String
+    ): Pair<String, String> {
 
-        val parts = text.split(" → ", limit = 2)
-        if (parts.size < 2) return Pair("", "")
+        if (!text.contains(" → "))
+            return Pair("", "")
 
-        return Pair(removeNoise(parts[0]), removeNoise(parts[1]))
+        val parts =
+            text.split(
+                " → ",
+                limit = 2
+            )
+
+        if (parts.size < 2)
+            return Pair("", "")
+
+        return Pair(
+            removeNoise(parts[0]),
+            removeNoise(parts[1])
+        )
     }
 
-    private fun extractFare(text: String): String {
+    private fun extractFare(
+        text: String
+    ): String {
+
         val patterns = listOf(
             "₱\\s?\\d+[,.]?\\d*",
             "PHP\\s?\\d+[,.]?\\d*",
@@ -202,10 +394,19 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
         )
 
         for (p in patterns) {
-            val matcher = Pattern.compile(p).matcher(text)
+
+            val matcher =
+                Pattern.compile(p)
+                    .matcher(text)
+
             if (matcher.find()) {
+
                 return matcher.group()
-                    .replace("Fare", "", ignoreCase = true)
+                    .replace(
+                        "Fare",
+                        "",
+                        true
+                    )
                     .trim()
             }
         }
@@ -213,7 +414,10 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
         return ""
     }
 
-    private fun extractDistance(text: String): String {
+    private fun extractDistance(
+        text: String
+    ): String {
+
         val patterns = listOf(
             "\\d+[.]?\\d*\\s?km",
             "\\d+[.]?\\d*\\s?kilometers",
@@ -221,14 +425,24 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
         )
 
         for (p in patterns) {
-            val matcher = Pattern.compile(p, Pattern.CASE_INSENSITIVE).matcher(text)
-            if (matcher.find()) return matcher.group().trim()
+
+            val matcher =
+                Pattern.compile(
+                    p,
+                    Pattern.CASE_INSENSITIVE
+                ).matcher(text)
+
+            if (matcher.find())
+                return matcher.group().trim()
         }
 
         return ""
     }
 
-    private fun removeNoise(value: String): String {
+    private fun removeNoise(
+        value: String
+    ): String {
+
         return value
             .replace(Regex("(?i)new booking"), "")
             .replace(Regex("(?i)booking detected"), "")
@@ -236,13 +450,13 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             .replace(Regex("(?i)pick up"), "")
             .replace(Regex("(?i)from"), "")
             .replace(Regex("(?i)route"), "")
-            .replace(Regex("₱\\s?\\d+[,.]?\\d*"), "")
-            .replace(Regex("PHP\\s?\\d+[,.]?\\d*", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\d+[.]?\\d*\\s?km", RegexOption.IGNORE_CASE), "")
             .trim()
     }
 
-    private fun cleanPlace(place: String): String {
+    private fun cleanPlace(
+        place: String
+    ): String {
+
         return place
             .replace(Regex("(?i)fare.*"), "")
             .replace(Regex("(?i)distance.*"), "")
@@ -254,41 +468,75 @@ class DriverNotificationListener : NotificationListenerService(), TextToSpeech.O
             .trim()
     }
 
-    private fun buildSpokenMessage(appName: String, booking: BookingInfo): String {
+    private fun buildSpokenMessage(
+        appName: String,
+        booking: BookingInfo
+    ): String {
+
         return buildString {
-            append("$appName booking detected. ")
+
+            append(
+                "$appName booking detected. "
+            )
 
             if (booking.pickup.isNotBlank()) {
-                append("Pickup, ${booking.pickup}. ")
+                append("Pickup. ")
+                append("${booking.pickup}. ")
             }
 
             if (booking.dropoff.isNotBlank()) {
-                append("Drop off, ${booking.dropoff}. ")
+                append("Drop off. ")
+                append("${booking.dropoff}. ")
             }
 
             if (booking.fare.isNotBlank()) {
-                append("Fare, ${booking.fare}. ")
+                append("Fare. ")
+                append("${booking.fare}. ")
             }
 
             if (booking.distance.isNotBlank()) {
-                append("Distance, ${booking.distance}. ")
+                append("Distance. ")
+                append("${booking.distance}. ")
             }
         }
     }
 
-    private fun speak(message: String) {
-        if (!prefs.getBoolean("voice_enabled", true)) return
+    private fun speak(
+        message: String
+    ) {
+
+        if (!prefs.getBoolean(
+                "voice_enabled",
+                true
+            )
+        ) return
 
         if (!ttsReady || tts == null) {
-            tts = TextToSpeech(this, this)
+            tts = TextToSpeech(
+                this,
+                this
+            )
             return
         }
 
-        val volume = prefs.getFloat("voice_volume", 1.0f).coerceIn(0.1f, 1.0f)
+        val volume =
+            prefs.getFloat(
+                "voice_volume",
+                1.0f
+            ).coerceIn(
+                0.1f,
+                1.0f
+            )
 
-        val params = Bundle().apply {
-            putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, volume)
-        }
+        val params =
+            Bundle().apply {
+                putFloat(
+                    TextToSpeech.Engine.KEY_PARAM_VOLUME,
+                    volume
+                )
+            }
+
+        tts?.stop()
 
         tts?.speak(
             message,
